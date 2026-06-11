@@ -23,6 +23,7 @@ from demo_mode import (
     mark_demo_tour,
     seed_demo_data,
 )
+from tour_links import apply_booking_links, is_valid_booking_url, resolve_agency_url, resolve_booking_url
 from config import Config
 from database import get_db
 
@@ -296,6 +297,7 @@ async def chat(req: ChatReq):
                 )
                 tour = attach_demo_flight(tour, flights[0] if flights else None)
                 tour = mark_demo_tour(tour)
+                tour = apply_booking_links(tour, hotels, dest)
             else:
                 offers = await flights_client.search_flights(
                     destination=dest or "",
@@ -330,6 +332,12 @@ async def chat(req: ChatReq):
                     except (TypeError, ValueError):
                         pass
 
+                self_link = (tour.get("booking_links") or {}).get("self") or ""
+                if "aviasales" in self_link:
+                    tour.setdefault("booking_links", {})["agency"] = resolve_agency_url()
+                else:
+                    tour = apply_booking_links(tour, hotels, dest)
+
             db.save_tour(qid, tour, tour.get("total_price", 0))
             tour["formatted"] = format_tour(tour, params, demo=demo)
         else:
@@ -360,9 +368,14 @@ async def chat(req: ChatReq):
 def format_tour(tour, params, demo: bool = False):
     hotel = tour.get("selected_hotel", {})
     flight = tour.get("flight", {})
-    links = tour.get("booking_links", {})
+    links = tour.setdefault("booking_links", {})
     self_link = links.get("self", "#")
-    agency_link = links.get("agency", Config.AGENCY_CONTACT_URL)
+    if not is_valid_booking_url(self_link):
+        self_link = resolve_booking_url(hotel, params.get("destination"))
+    agency_link = resolve_agency_url()
+    links["self"] = self_link
+    links["agency"] = agency_link
+    tour["booking_url"] = self_link
     budget_str = format_budget_display(params)
 
     def rub(v):

@@ -61,7 +61,10 @@ AGENCY_CONTACT_URL=https://bon-voyage28.ru/contacts/
 SEED_DEMO_ON_START=true
 PORT=8000
 EOF
-chmod 600 .env
+chmod 640 .env
+
+echo "==> Права для www-data (systemd)"
+chown -R www-data:www-data "$APP_DIR"
 
 echo "==> Systemd"
 cp deploy/tour-generator.service /etc/systemd/system/

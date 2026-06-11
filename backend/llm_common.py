@@ -4,6 +4,7 @@ from typing import Any
 
 from budget_utils import default_collected_fields, normalize_budget_rub
 from config import Config
+from tour_links import apply_booking_links, resolve_agency_url, resolve_booking_url
 from catalog_context import build_catalog_snippet, normalize_collected_destination
 from date_validation import (
     all_required_fields_present,
@@ -163,38 +164,29 @@ def parse_dialog_response(
     return response_text, dialog_state, is_ready
 
 
-def finalize_tour(tour: dict, hotels_data: list) -> dict:
-    base_url = Config.SITE_PRIMARY_URL.rstrip("/")
-    hotel = hotels_data[0] if hotels_data else {}
-    url = hotel.get("source_url") or base_url
-    if url and not str(url).startswith("http"):
-        url = f"{base_url}/{url.lstrip('/')}"
-    links = tour.setdefault("booking_links", {})
-    if not links.get("self") or links.get("self") == "#":
-        links["self"] = url
-    if not links.get("agency"):
-        links["agency"] = Config.AGENCY_CONTACT_URL
+def finalize_tour(tour: dict, hotels_data: list, destination: str | None = None) -> dict:
+    tour = apply_booking_links(tour, hotels_data, destination)
     tour["currency"] = "RUB"
     return tour
 
 
-def fallback_tour(hotels_data: list) -> dict:
-    base_url = Config.SITE_PRIMARY_URL.rstrip("/")
+def fallback_tour(hotels_data: list, destination: str | None = None) -> dict:
     hotel = hotels_data[0] if hotels_data else {}
-    url = hotel.get("source_url") or base_url
-    if url and not str(url).startswith("http"):
-        url = f"{base_url}/{url.lstrip('/')}"
     price_rub = float(hotel.get("total_stay_price") or 0)
+    dest = destination or hotel.get("destination", "")
 
-    return {
-        "selected_hotel": {
-            "name": hotel.get("name", "Тур"),
-            "price": price_rub,
-            "description": hotel.get("destination", ""),
+    return finalize_tour(
+        {
+            "selected_hotel": {
+                "name": hotel.get("name", "Тур"),
+                "price": price_rub,
+                "description": dest,
+            },
+            "flight": {"estimated_price": 0, "info": "Уточняйте у менеджера"},
+            "total_price": price_rub,
+            "recommendation_text": "Подобран вариант из каталога турфирмы.",
+            "booking_links": {},
         },
-        "flight": {"estimated_price": 0, "info": "Уточняйте у менеджера"},
-        "total_price": price_rub,
-        "currency": "RUB",
-        "recommendation_text": "Подобран вариант из каталога турфирмы.",
-        "booking_links": {"self": url, "agency": Config.AGENCY_CONTACT_URL},
-    }
+        hotels_data,
+        destination=dest,
+    )

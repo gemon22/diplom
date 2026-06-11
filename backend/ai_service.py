@@ -157,7 +157,7 @@ class AIService:
         clients = self._client_order(resolved)
 
         if not clients:
-            return fallback_tour(hotels_data)
+            return fallback_tour(hotels_data, collected_params.get("destination"))
 
         for client in clients:
             logger.info(f"LLM tour via {client.name}")
@@ -168,12 +168,14 @@ class AIService:
             if response:
                 try:
                     tour = extract_json(response)
-                    tour = finalize_tour(tour, hotels_data)
+                    tour = finalize_tour(
+                        tour, hotels_data, collected_params.get("destination")
+                    )
                     tour["_llm_provider"] = client.name
                     return tour
                 except (json.JSONDecodeError, TypeError):
                     continue
-        return fallback_tour(hotels_data)
+        return fallback_tour(hotels_data, collected_params.get("destination"))
 
     def list_providers(self) -> list[dict]:
         return [

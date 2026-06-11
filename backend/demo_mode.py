@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from datetime import date, timedelta
 
+from tour_links import catalog_url_for_destination
+
 DEMO_SOURCE = "demo"
 
 DEMO_DISCLAIMER = (
@@ -13,21 +15,21 @@ DEMO_DISCLAIMER = (
 )
 
 DEMO_HOTELS: list[dict] = [
-    {"name": "Тур «Жемчужина Китая» — Шанхай", "destination": "Китай", "price_per_night": 8500, "total_stay_price": 59500, "amenities": "экскурсии, трансфер", "rating": 4.7, "source_url": "https://bon-voyage28.ru/demo/china-1"},
-    {"name": "Тур «Хэйхэ — выходные»", "destination": "Китай", "price_per_night": 6200, "total_stay_price": 24800, "amenities": "шоп-тур, трансфер", "rating": 4.5, "source_url": "https://bon-voyage28.ru/demo/china-2"},
-    {"name": "Тур «Пекин — история и культура»", "destination": "Китай", "price_per_night": 9100, "total_stay_price": 72800, "amenities": "экскурсии, завтраки", "rating": 4.8, "source_url": "https://bon-voyage28.ru/demo/china-3"},
-    {"name": "Тур «Паттайя — море и отдых»", "destination": "Таиланд", "price_per_night": 7800, "total_stay_price": 54600, "amenities": "пляж, трансфер", "rating": 4.6, "source_url": "https://bon-voyage28.ru/demo/thai-1"},
-    {"name": "Тур «Пхукет All Inclusive»", "destination": "Таиланд", "price_per_night": 11200, "total_stay_price": 78400, "amenities": "всё включено", "rating": 4.9, "source_url": "https://bon-voyage28.ru/demo/thai-2"},
-    {"name": "Тур «Бангкок — город контрастов»", "destination": "Таиланд", "price_per_night": 6900, "total_stay_price": 48300, "amenities": "экскурсии", "rating": 4.4, "source_url": "https://bon-voyage28.ru/demo/thai-3"},
-    {"name": "Тур «Анталия — семейный отдых»", "destination": "Турция", "price_per_night": 7400, "total_stay_price": 51800, "amenities": "бассейн, трансфер", "rating": 4.5, "source_url": "https://bon-voyage28.ru/demo/turkey-1"},
-    {"name": "Тур «Стамбул — две столицы»", "destination": "Турция", "price_per_night": 8800, "total_stay_price": 61600, "amenities": "экскурсии, завтраки", "rating": 4.7, "source_url": "https://bon-voyage28.ru/demo/turkey-2"},
-    {"name": "Тур «Нячанг — пляжный»", "destination": "Вьетнам", "price_per_night": 6500, "total_stay_price": 45500, "amenities": "море, трансфер", "rating": 4.3, "source_url": "https://bon-voyage28.ru/demo/viet-1"},
-    {"name": "Тур «Фукуок — тропики»", "destination": "Вьетнам", "price_per_night": 9800, "total_stay_price": 68600, "amenities": "курорт", "rating": 4.6, "source_url": "https://bon-voyage28.ru/demo/viet-2"},
-    {"name": "Тур «Сочи — Черное море»", "destination": "Россия", "price_per_night": 5200, "total_stay_price": 36400, "amenities": "море, экскурсии", "rating": 4.4, "source_url": "https://bon-voyage28.ru/demo/russia-1"},
-    {"name": "Тур «Москва — классика»", "destination": "Россия", "price_per_night": 6100, "total_stay_price": 42700, "amenities": "экскурсии, отель 4*", "rating": 4.5, "source_url": "https://bon-voyage28.ru/demo/russia-2"},
-    {"name": "Тур «Камчатка — дикая природа»", "destination": "Россия", "price_per_night": 14500, "total_stay_price": 101500, "amenities": "экскурсии, гид", "rating": 4.9, "source_url": "https://bon-voyage28.ru/demo/russia-3"},
-    {"name": "Тур «Токио — современный мегаполис»", "destination": "Япония", "price_per_night": 13200, "total_stay_price": 92400, "amenities": "экскурсии, JR Pass", "rating": 4.8, "source_url": "https://bon-voyage28.ru/demo/japan-1"},
-    {"name": "Тур «Дубай — luxury weekend»", "destination": "ОАЭ", "price_per_night": 15800, "total_stay_price": 94800, "amenities": "отель 5*, трансфер", "rating": 4.7, "source_url": "https://bon-voyage28.ru/demo/uae-1"},
+    {"name": "Тур «Жемчужина Китая» — Шанхай", "destination": "Китай", "price_per_night": 8500, "total_stay_price": 59500, "amenities": "экскурсии, трансфер", "rating": 4.7, "source_url": "https://bon-voyage28.ru/tury/china-1"},
+    {"name": "Тур «Хэйхэ — выходные»", "destination": "Китай", "price_per_night": 6200, "total_stay_price": 24800, "amenities": "шоп-тур, трансфер", "rating": 4.5, "source_url": "https://bon-voyage28.ru/tury/china-2"},
+    {"name": "Тур «Пекин — история и культура»", "destination": "Китай", "price_per_night": 9100, "total_stay_price": 72800, "amenities": "экскурсии, завтраки", "rating": 4.8, "source_url": "https://bon-voyage28.ru/tury/china-3"},
+    {"name": "Тур «Паттайя — море и отдых»", "destination": "Таиланд", "price_per_night": 7800, "total_stay_price": 54600, "amenities": "пляж, трансфер", "rating": 4.6, "source_url": "https://bon-voyage28.ru/tury/thai-1"},
+    {"name": "Тур «Пхукет All Inclusive»", "destination": "Таиланд", "price_per_night": 11200, "total_stay_price": 78400, "amenities": "всё включено", "rating": 4.9, "source_url": "https://bon-voyage28.ru/tury/thai-2"},
+    {"name": "Тур «Бангкок — город контрастов»", "destination": "Таиланд", "price_per_night": 6900, "total_stay_price": 48300, "amenities": "экскурсии", "rating": 4.4, "source_url": "https://bon-voyage28.ru/tury/thai-3"},
+    {"name": "Тур «Анталия — семейный отдых»", "destination": "Турция", "price_per_night": 7400, "total_stay_price": 51800, "amenities": "бассейн, трансфер", "rating": 4.5, "source_url": "https://bon-voyage28.ru/tury/turkey-1"},
+    {"name": "Тур «Стамбул — две столицы»", "destination": "Турция", "price_per_night": 8800, "total_stay_price": 61600, "amenities": "экскурсии, завтраки", "rating": 4.7, "source_url": "https://bon-voyage28.ru/tury/turkey-2"},
+    {"name": "Тур «Нячанг — пляжный»", "destination": "Вьетнам", "price_per_night": 6500, "total_stay_price": 45500, "amenities": "море, трансфер", "rating": 4.3, "source_url": "https://bon-voyage28.ru/tury/viet-1"},
+    {"name": "Тур «Фукуок — тропики»", "destination": "Вьетнам", "price_per_night": 9800, "total_stay_price": 68600, "amenities": "курорт", "rating": 4.6, "source_url": "https://bon-voyage28.ru/tury/viet-2"},
+    {"name": "Тур «Сочи — Черное море»", "destination": "Россия", "price_per_night": 5200, "total_stay_price": 36400, "amenities": "море, экскурсии", "rating": 4.4, "source_url": "https://bon-voyage28.ru/tury/russia-1"},
+    {"name": "Тур «Москва — классика»", "destination": "Россия", "price_per_night": 6100, "total_stay_price": 42700, "amenities": "экскурсии, отель 4*", "rating": 4.5, "source_url": "https://bon-voyage28.ru/tury/russia-2"},
+    {"name": "Тур «Камчатка — дикая природа»", "destination": "Россия", "price_per_night": 14500, "total_stay_price": 101500, "amenities": "экскурсии, гид", "rating": 4.9, "source_url": "https://bon-voyage28.ru/tury/russia-3"},
+    {"name": "Тур «Токио — современный мегаполис»", "destination": "Япония", "price_per_night": 13200, "total_stay_price": 92400, "amenities": "экскурсии, JR Pass", "rating": 4.8, "source_url": "https://bon-voyage28.ru/tury/japan-1"},
+    {"name": "Тур «Дубай — luxury weekend»", "destination": "ОАЭ", "price_per_night": 15800, "total_stay_price": 94800, "amenities": "отель 5*, трансфер", "rating": 4.7, "source_url": "https://bon-voyage28.ru/tury/uae-1"},
 ]
 
 _DEMO_FLIGHT_BASE = date.today() + timedelta(days=30)
@@ -108,7 +110,14 @@ def seed_demo_data(db) -> int:
         return existing
 
     db.clear_demo_data()
-    hotels = [{**h, "source_site": DEMO_SOURCE} for h in DEMO_HOTELS]
+    hotels = [
+        {
+            **h,
+            "source_site": DEMO_SOURCE,
+            "source_url": catalog_url_for_destination(h.get("destination")),
+        }
+        for h in DEMO_HOTELS
+    ]
     db.insert_hotels(hotels)
 
     flights = []

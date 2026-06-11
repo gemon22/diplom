@@ -533,7 +533,9 @@
 
 <script>
     (function() {
-        // Ждём полной загрузки DOM
+        const CHAT_STORAGE_KEY = 'bonvoyage_chat_v1';
+        const CHAT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
         document.addEventListener('DOMContentLoaded', function() {
             const mountEl = document.getElementById('tourApp');
             if (!mountEl) return;
@@ -631,13 +633,60 @@
                 },
                 mounted() {
                     this.loadLlmProviders();
-                    this.messages.push({
-                        role: 'ai',
-                        text: '👋 Добрый день! Укажите направление из нашего каталога, даты поездки (в будущем) и бюджет в рублях. Я подберу реальный тур с сайта «Бон Вояж».'
-                    });
+                    if (!this.restoreChatState()) {
+                        this.messages.push({
+                            role: 'ai',
+                            text: '👋 Добрый день! Укажите направление из нашего каталога, даты поездки (в будущем) и бюджет в рублях. Я подберу реальный тур с сайта «Бон Вояж».'
+                        });
+                    }
                     this.scrollToBottom();
                 },
                 methods: {
+                    saveChatState() {
+                        try {
+                            localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
+                                sessionId: this.sessionId,
+                                messages: this.messages.map(function(m) {
+                                    return {
+                                        role: m.role,
+                                        text: m.text,
+                                        llmLabel: m.llmLabel || '',
+                                        tour: m.tour ? {
+                                            formatted: m.tour.formatted,
+                                            selected_hotel: m.tour.selected_hotel,
+                                            total_price: m.tour.total_price,
+                                            booking_links: m.tour.booking_links
+                                        } : null
+                                    };
+                                }),
+                                llmProvider: this.llmProvider,
+                                lastTourName: this.lastTourName,
+                                savedAt: Date.now()
+                            }));
+                        } catch (e) { /* private mode / quota */ }
+                    },
+                    restoreChatState() {
+                        try {
+                            var raw = localStorage.getItem(CHAT_STORAGE_KEY);
+                            if (!raw) return false;
+                            var data = JSON.parse(raw);
+                            if (data.savedAt && (Date.now() - data.savedAt > CHAT_TTL_MS)) {
+                                localStorage.removeItem(CHAT_STORAGE_KEY);
+                                return false;
+                            }
+                            if (!data.messages || !data.messages.length) return false;
+                            this.messages = data.messages;
+                            this.sessionId = data.sessionId || null;
+                            this.llmProvider = data.llmProvider || 'auto';
+                            this.lastTourName = data.lastTourName || '';
+                            return true;
+                        } catch (e) {
+                            return false;
+                        }
+                    },
+                    clearChatState() {
+                        try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch (e) { /* ignore */ }
+                    },
                     async loadLlmProviders() {
                         try {
                             const res = await axios.get('/api/llm/providers');
@@ -671,6 +720,7 @@
                         const userMsg = this.inputMsg;
                         this.messages.push({ role: 'user', text: userMsg });
                         this.inputMsg = '';
+                        this.saveChatState();
                         this.loading = true;
                         this.llmBadgeClass = 'switching';
                         this.llmStatusText = 'Запрос к ' + this.providerLabel + '…';
@@ -710,6 +760,7 @@
                             });
                         } finally {
                             this.loading = false;
+                            this.saveChatState();
                             this.scrollToBottom();
                         }
                     },
@@ -744,11 +795,13 @@
                             } catch (e) { /* игнорируем */ }
                         }
                         this.sessionId = null;
+                        this.clearChatState();
                         this.messages = [];
                         this.messages.push({
                             role: 'ai',
                             text: '🔄 Диалог обновлён. С чего начнём? Просто напишите свои пожелания.'
                         });
+                        this.saveChatState();
                         this.scrollToBottom();
                     },
                     scrollToBottom() {

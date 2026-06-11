@@ -83,7 +83,7 @@ class Config:
 
     # Ссылки для кнопок в турпакете
     AGENCY_CONTACT_URL = os.getenv(
-        "AGENCY_CONTACT_URL", "https://bon-voyage28.ru/contacts/"
+        "AGENCY_CONTACT_URL", "https://bon-voyage28.ru/"
     )
 
     # Travelpayouts / Aviasales Data API (авиабилеты)
