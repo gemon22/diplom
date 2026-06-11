@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Планета 360 — AI Тур-Генератор</title>
+    <!-- Шрифты и основные стили -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+
+        /* Шапка и навигация (мягкая, минималистичная) */
+        .site-header {
+            background: linear-gradient(135deg, #01773a 0%, #028a46 100%);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 16px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .logo img {
+            height: 52px;
+            transition: transform 0.2s ease;
+        }
+        .logo img:hover {
+            transform: scale(1.02);
+        }
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: opacity 0.2s;
+            opacity: 0.9;
+        }
+        .nav-links a:hover {
+            opacity: 1;
+            text-decoration: underline;
+            text-underline-offset: 6px;
+        }
+        .contacts-header {
+            background: rgba(255,255,255,0.1);
+            border-radius: 40px;
+            padding: 6px 16px;
+            font-size: 0.9rem;
+            color: white;
+        }
+        .contacts-header a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Основной контейнер */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Карточка модуля — мягкая, воздушная */
+        .tour-module {
+            margin: 48px 0;
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.02);
+            overflow: hidden;
+            transition: box-shadow 0.2s;
+        }
+        .tour-module:hover {
+            box-shadow: 0 24px 40px -16px rgba(1,119,58,0.15);
+        }
+
+        .module-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f9fefb 100%);
+            padding: 28px 32px 16px 32px;
+            border-bottom: 1px solid #eef2f6;
+        }
+        .module-header h3 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #01773a, #2b9e5c);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+        .module-header p {
+            color: #5a6e7c;
+            font-size: 1rem;
+        }
+
+        /* Область сообщений — уютная, с плавным скроллом */
+        .chat-messages {
+            height: 440px;
+            overflow-y: auto;
+            padding: 24px 28px;
+            background: #fefefe;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
+        }
+        .message {
+            display: flex;
+            animation: fadeSlideUp 0.25s ease-out;
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.user {
+            justify-content: flex-end;
+        }
+        .message.ai {
+            justify-content: flex-start;
+        }
+        .bubble {
+            max-width: 75%;
+            padding: 12px 20px;
+            border-radius: 28px;
+            font-size: 0.95rem;
+            line-height: 1.45;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+        .user .bubble {
+            background: #e9f7ef;
+            color: #1a3b2c;
+            border-bottom-right-radius: 6px;
+            border: 1px solid #d4eade;
+        }
+        .ai .bubble {
+            background: #ffffff;
+            border: 1px solid #e4e9ef;
+            border-bottom-left-radius: 6px;
+        }
+        .typing-indicator {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #9aaebf;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.2s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes pulse {
+            0%, 60%, 100% { transform: scale(0.8); opacity: 0.5; }
+            30% { transform: scale(1.2); opacity: 1; }
+        }
+
+        /* Карточка тура внутри сообщения */
+        .tour-card {
+            margin-top: 12px;
+            background: #f9fbfd;
+            border-radius: 24px;
+            padding: 16px 20px;
+            border-left: 4px solid #53b244;
+            font-size: 0.9rem;
+        }
+        .tour-card a {
+            color: #01773a;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px dashed #cbd5e1;
+        }
+        .tour-card a:hover {
+            color: #026e37;
+            border-bottom: 1px solid;
+        }
+
+        /* Форма ввода */
+        .chat-input-area {
+            padding: 20px 28px 28px 28px;
+            background: white;
+            border-top: 1px solid #eff3f8;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .chat-input-area input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 48px;
+            font-size: 1rem;
+            background: #ffffff;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .chat-input-area input:focus {
+            outline: none;
+            border-color: #53b244;
+            box-shadow: 0 0 0 3px rgba(83,178,68,0.2);
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 48px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #01773a;
+            color: white;
+        }
+        .btn:hover {
+            background: #02612f;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(1,119,58,0.2);
+        }
+        .btn-reset {
+            background: #f1f5f9;
+            color: #475569;
+            box-shadow: none;
+        }
+        .btn-reset:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+            transform: translateY(-1px);
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .llm-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 28px;
+            background: #f4faf6;
+            border-bottom: 1px solid #e2efe6;
+            font-size: 0.85rem;
+        }
+        .llm-toolbar label {
+            color: #475569;
+            font-weight: 500;
+        }
+        .llm-toolbar select {
+            padding: 8px 14px;
+            border-radius: 24px;
+            border: 1px solid #c5dcc9;
+            background: white;
+            font-family: inherit;
+            min-width: 200px;
+        }
+        .llm-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: #e0f2e9;
+            color: #01773a;
+            font-weight: 500;
+            transition: background 0.3s, transform 0.2s;
+        }
+        .llm-badge.switching {
+            background: #fff3cd;
+            color: #856404;
+            animation: pulseBadge 0.8s ease infinite;
+        }
+        .llm-badge.fallback {
+            background: #e8f4fd;
+            color: #0c5460;
+        }
+        @keyframes pulseBadge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.65; }
+        }
+
+        .lead-panel {
+            margin: 0 28px 24px;
+            padding: 20px 24px;
+            background: #f8fafc;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        .lead-panel h4 {
+            color: #01773a;
+            margin-bottom: 12px;
+            font-size: 1.05rem;
+        }
+        .lead-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .lead-form .full {
+            grid-column: 1 / -1;
+        }
+        .lead-form input,
+        .lead-form textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .lead-form textarea {
+            min-height: 72px;
+            resize: vertical;
+        }
+        .lead-success {
+            color: #01773a;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+        .lead-error {
+            color: #b91c1c;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        /* Футер */
+        .site-footer {
+            background: #fff;
+            border-top: 1px solid #eef2f6;
+            margin-top: 60px;
+            padding: 32px 0;
+            text-align: center;
+            color: #5a6e7c;
+            font-size: 0.85rem;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 780px) {
+            .navbar { flex-direction: column; gap: 12px; align-items: stretch; text-align: center; }
+            .nav-links { justify-content: center; flex-wrap: wrap; gap: 16px; }
+            .module-header h3 { font-size: 1.6rem; }
+            .bubble { max-width: 88%; }
+            .chat-input-area { flex-wrap: wrap; }
+            .chat-input-area input { width: 100%; }
+            .btn-reset { margin-left: auto; }
+            .lead-form { grid-template-columns: 1fr; }
+            .llm-toolbar select { min-width: 100%; }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="navbar">
+        <div class="logo">
+            <a href="/" style="color:#fff;text-decoration:none;font-weight:700;font-size:1.05rem;">Планета 360</a>
+        </div>
+        <ul class="nav-links">
+            <li><a href="/">Главная</a></li>
+            <li><a href="/tury">Туры</a></li>
+            <li><a href="/tours">Туры по Китаю</a></li>
+            <li><a href="/goryashchie-tury">Горящие туры</a></li>
+            <li><a href="/kontakty">Контакты</a></li>
+        </ul>
+        <div class="contacts-header">
+            📞 <a href="tel:+74162317771">+7 (4162) 317-771</a>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <!-- Модуль генератора туров -->
+    <div id="tourApp"></div>
+
+    <!-- Блок "О нас" для визуального завершения -->
+    <div style="background: #fff; border-radius: 28px; padding: 32px; margin: 24px 0 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
+        <h2 style="color: #01773a; font-weight: 600; margin-bottom: 12px;">О компании</h2>
+        <p style="color: #2c3e42;">Группа компаний «Туроператор ООО "Бон Вояж"» и «Планета 360» с 2016 года создают незабываемые путешествия. Наша команда экспертов подбирает туры по России, Китаю и другим направлениям, заботится о каждой детали, чтобы вы отдыхали с душой.</p>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container">
+        © 2026 Планета 360 — AI Тур-Генератор. Все права защищены.
+    </div>
+</footer>
+
+<script>
+    (function() {
+        // Ждём полной загрузки DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            const mountEl = document.getElementById('tourApp');
+            if (!mountEl) return;
+
+            new Vue({
+                el: '#tourApp',
+                template: `
+                    <div class="tour-module">
+                        <div class="module-header">
+                            <h3>✈️ AI Тур-Генератор</h3>
+                            <p>Расскажите направление, даты и бюджет в рублях — нейросеть подберёт тур из каталога</p>
+                        </div>
+
+                        <div class="llm-toolbar">
+                            <label for="llmSelect">Нейросеть:</label>
+                            <select id="llmSelect" v-model="llmProvider" :disabled="loading" @change="onLlmChange">
+                                <option v-for="p in llmProviders" :key="p.id" :value="p.id">{{ p.name }}</option>
+                            </select>
+                            <span :class="['llm-badge', llmBadgeClass]">{{ llmStatusText }}</span>
+                        </div>
+
+                        <div class="chat-messages" ref="msgContainer">
+                            <div v-for="(msg, idx) in messages" :key="idx" :class="['message', msg.role]">
+                                <div class="bubble">
+                                    <div v-if="msg.llmLabel" class="llm-badge" style="margin-bottom:8px;font-size:0.75rem;">{{ msg.llmLabel }}</div>
+                                    <div v-html="msg.text.replace(/\\n/g, '<br>')"></div>
+                                    <div v-if="msg.tour" class="tour-card" v-html="msg.tour.formatted"></div>
+                                </div>
+                            </div>
+                            <div v-if="loading" class="message ai">
+                                <div class="bubble">
+                                    <div class="typing-indicator">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="chat-input-area">
+                            <input type="text" v-model="inputMsg" @keyup.enter="send" placeholder="Например: хочу в Китай с 10 июля по 20 июля, бюджет 80 000 руб." :disabled="loading">
+                            <button class="btn" @click="send" :disabled="loading || !inputMsg.trim()">Отправить</button>
+                            <button class="btn btn-reset" @click="reset" :disabled="loading">Сброс</button>
+                        </div>
+
+                        <div class="lead-panel">
+                            <h4>📞 Заявка в турфирму</h4>
+                            <div class="lead-form">
+                                <input type="text" v-model="leadName" placeholder="Ваше имя *" :disabled="leadSending">
+                                <input type="tel" v-model="leadPhone" placeholder="Телефон *" :disabled="leadSending">
+                                <input type="email" class="full" v-model="leadEmail" placeholder="Email (необязательно)" :disabled="leadSending">
+                                <textarea class="full" v-model="leadMessage" placeholder="Комментарий" :disabled="leadSending"></textarea>
+                                <button class="btn full" @click="submitLead" :disabled="leadSending || !leadName.trim() || !leadPhone.trim()">
+                                    {{ leadSending ? 'Отправка…' : 'Отправить заявку' }}
+                                </button>
+                            </div>
+                            <p v-if="leadSuccess" class="lead-success">{{ leadSuccess }}</p>
+                            <p v-if="leadError" class="lead-error">{{ leadError }}</p>
+                        </div>
+                    </div>
+                `,
+                data: {
+                    sessionId: null,
+                    messages: [],
+                    inputMsg: '',
+                    loading: false,
+                    llmProviders: [{ id: 'auto', name: 'Авто (с запасным)' }],
+                    llmProvider: 'auto',
+                    llmStatusText: 'Готов к диалогу',
+                    llmBadgeClass: '',
+                    lastLlmLabel: '',
+                    leadName: '',
+                    leadPhone: '',
+                    leadEmail: '',
+                    leadMessage: '',
+                    leadSending: false,
+                    leadSuccess: '',
+                    leadError: '',
+                    lastTourName: ''
+                },
+                computed: {
+                    providerLabel() {
+                        const p = this.llmProviders.find(x => x.id === this.llmProvider);
+                        return p ? p.name : this.llmProvider;
+                    }
+                },
+                mounted() {
+                    this.loadLlmProviders();
+                    this.messages.push({
+                        role: 'ai',
+                        text: '👋 Добрый день! Укажите направление из нашего каталога, даты поездки (в будущем) и бюджет в рублях. Я подберу реальный тур с сайта «Бон Вояж».'
+                    });
+                    this.scrollToBottom();
+                },
+                methods: {
+                    async loadLlmProviders() {
+                        try {
+                            const res = await axios.get('/api/llm/providers');
+                            if (res.data.providers && res.data.providers.length) {
+                                this.llmProviders = res.data.providers;
+                            }
+                            if (res.data.default) {
+                                this.llmProvider = res.data.default;
+                            }
+                        } catch (e) { /* defaults */ }
+                    },
+                    onLlmChange() {
+                        this.llmBadgeClass = 'switching';
+                        this.llmStatusText = 'Переключение на ' + this.providerLabel + '…';
+                        setTimeout(() => {
+                            this.llmBadgeClass = '';
+                            this.llmStatusText = 'Выбрано: ' + this.providerLabel;
+                        }, 1200);
+                    },
+                    setLlmActive(label, fallback) {
+                        if (fallback) {
+                            this.llmBadgeClass = 'fallback';
+                            this.llmStatusText = 'Запасная: ' + label;
+                        } else {
+                            this.llmBadgeClass = '';
+                            this.llmStatusText = 'Ответ: ' + label;
+                        }
+                    },
+                    async send() {
+                        if (!this.inputMsg.trim()) return;
+                        const userMsg = this.inputMsg;
+                        this.messages.push({ role: 'user', text: userMsg });
+                        this.inputMsg = '';
+                        this.loading = true;
+                        this.llmBadgeClass = 'switching';
+                        this.llmStatusText = 'Запрос к ' + this.providerLabel + '…';
+                        this.scrollToBottom();
+
+                        try {
+                            const response = await axios.post('/api/chat', {
+                                session_id: this.sessionId,
+                                message: userMsg,
+                                llm_provider: this.llmProvider
+                            });
+                            this.sessionId = response.data.session_id;
+                            const label = response.data.llm_provider_label || response.data.llm_provider || '';
+                            const fallback = response.data.llm_fallback;
+                            if (label) {
+                                this.setLlmActive(label, fallback);
+                                this.lastLlmLabel = (fallback ? '↪ ' : '') + label;
+                            }
+                            const aiMessage = {
+                                role: 'ai',
+                                text: response.data.response,
+                                llmLabel: this.lastLlmLabel
+                            };
+                            if (response.data.is_ready && response.data.tour_package) {
+                                aiMessage.tour = response.data.tour_package;
+                                const h = response.data.tour_package.selected_hotel;
+                                this.lastTourName = h && h.name ? h.name : '';
+                            }
+                            this.messages.push(aiMessage);
+                        } catch (err) {
+                            console.error('Chat error', err);
+                            this.llmBadgeClass = '';
+                            this.llmStatusText = 'Ошибка соединения';
+                            this.messages.push({
+                                role: 'ai',
+                                text: '❌ Не удалось связаться с сервером. Запустите: python run_server.py'
+                            });
+                        } finally {
+                            this.loading = false;
+                            this.scrollToBottom();
+                        }
+                    },
+                    async submitLead() {
+                        this.leadSuccess = '';
+                        this.leadError = '';
+                        this.leadSending = true;
+                        try {
+                            const res = await axios.post('/api/leads', {
+                                name: this.leadName,
+                                phone: this.leadPhone,
+                                email: this.leadEmail || null,
+                                message: this.leadMessage || null,
+                                session_id: this.sessionId,
+                                tour_name: this.lastTourName || null
+                            });
+                            this.leadSuccess = res.data.message || 'Заявка отправлена!';
+                            this.leadName = '';
+                            this.leadPhone = '';
+                            this.leadEmail = '';
+                            this.leadMessage = '';
+                        } catch (e) {
+                            this.leadError = 'Не удалось отправить заявку. Позвоните: +7 (4162) 317-771';
+                        } finally {
+                            this.leadSending = false;
+                        }
+                    },
+                    async reset() {
+                        if (this.sessionId) {
+                            try {
+                                await axios.post('/api/reset', null, { params: { session_id: this.sessionId } });
+                            } catch (e) { /* игнорируем */ }
+                        }
+                        this.sessionId = null;
+                        this.messages = [];
+                        this.messages.push({
+                            role: 'ai',
+                            text: '🔄 Диалог обновлён. С чего начнём? Просто напишите свои пожелания.'
+                        });
+                        this.scrollToBottom();
+                    },
+                    scrollToBottom() {
+                        this.$nextTick(() => {
+                            const container = this.$refs.msgContainer;
+                            if (container) container.scrollTop = container.scrollHeight;
+                        });
+                    }
+                }
+            });
+        });
+    })();
+</script>
+</body>
+</html>

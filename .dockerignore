@@ -1,0 +1,12 @@
+venv/
+.env
+.git/
+__pycache__/
+*.pyc
+.pytest_cache/
+.idea/
+.vscode/
+*.log
+docs/presentation_images/
+docs/_gen_log.txt
+agent-tools/

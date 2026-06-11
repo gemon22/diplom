@@ -1,0 +1,20 @@
+# Timeweb Cloud App Platform — деплой через Docker Compose
+# MySQL заказывается отдельно в панели (Облачные базы данных)
+# Переменные: timeweb/.env.production → загрузить в App Platform
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

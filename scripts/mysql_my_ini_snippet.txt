@@ -1,0 +1,37 @@
+# MySQL 9.7 на D:\MySQL (служба MySQL97)
+#
+# Конфиг:  D:\MySQL\SQL CONFIGURATOR\my.ini
+# Данные:  D:\MySQL\SQL CONFIGURATOR\Data
+# mysqld:   D:\MySQL\bin\mysqld.exe
+#
+# ОШИБКА: нельзя менять путь на SQL_CONFIGURATOR (без пробела) —
+# папка на диске называется "SQL CONFIGURATOR" (с пробелом)!
+#
+# Резервная копия: D:\MySQL\SQL CONFIGURATORmy_2026-05-15T20-25-01.ini
+#
+# Восстановление MySQL после ошибки в my.ini (Windows)
+#
+# 1. Остановите службу (от имени администратора):
+#    net stop MySQL80
+#
+# 2. Файл конфигурации обычно здесь:
+#    C:\ProgramData\MySQL\MySQL Server 8.0\my.ini
+#
+# 3. Если файл повреждён — восстановите из резервной копии my.ini.bak
+#    или переустановите только "Reconfigure" в MySQL Installer.
+#
+# 4. Для диплома достаточно localhost (FastAPI подключается локально).
+#    bind-address НЕ обязателен. Если нужен доступ из сети:
+#
+# [mysqld]
+# port=3306
+# bind-address=0.0.0.0
+#
+# 5. Проверка синтаксиса перед запуском:
+#    "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe" --defaults-file="C:\ProgramData\MySQL\MySQL Server 8.0\my.ini" --validate-config
+#
+# 6. Запуск:
+#    net start MySQL80
+#
+# 7. Проверка:
+#    mysql -u root -p -e "SELECT 1"

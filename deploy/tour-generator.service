@@ -1,0 +1,16 @@
+[Unit]
+Description=AI Tour Generator (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/tour-generator
+EnvironmentFile=/var/www/tour-generator/.env
+ExecStart=/var/www/tour-generator/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
