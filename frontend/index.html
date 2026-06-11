@@ -224,10 +224,11 @@
         @media (min-width: 781px) {
             .chat-input-area {
                 flex-direction: row;
-                align-items: center;
+                align-items: flex-end;
             }
-            .chat-input-area input {
+            .chat-input-area textarea {
                 flex: 1;
+                min-height: 52px;
             }
             .chat-input-actions {
                 flex-shrink: 0;
@@ -237,18 +238,22 @@
             }
         }
 
-        .chat-input-area input {
+        .chat-input-area textarea {
             width: 100%;
             padding: 14px 20px;
             border: 1px solid #e2e8f0;
-            border-radius: 48px;
+            border-radius: 20px;
             font-size: 1rem;
+            line-height: 1.45;
             background: #ffffff;
             transition: all 0.2s;
             font-family: inherit;
             box-sizing: border-box;
+            resize: vertical;
+            min-height: 52px;
+            max-height: 160px;
         }
-        .chat-input-area input:focus {
+        .chat-input-area textarea:focus {
             outline: none;
             border-color: #53b244;
             box-shadow: 0 0 0 3px rgba(83,178,68,0.2);
@@ -330,12 +335,41 @@
             50% { opacity: 0.65; }
         }
 
+        .tour-app-root {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
         .lead-panel {
-            margin: 0 28px 24px;
+            margin: 32px 0 24px;
             padding: 20px 24px;
             background: #f8fafc;
             border-radius: 20px;
             border: 1px solid #e2e8f0;
+        }
+        .about-block {
+            background: #fff;
+            border-radius: 28px;
+            padding: 24px 28px;
+            margin: 8px 0 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        }
+        .about-block h2 {
+            color: #01773a;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        .about-block p {
+            color: #2c3e42;
+            font-size: 0.95rem;
+            line-height: 1.55;
+        }
+
+        .lead-panel--bottom {
+            margin-top: 16px;
+            margin-bottom: 40px;
         }
         .lead-panel h4 {
             color: #01773a;
@@ -394,10 +428,11 @@
             .contacts-header { font-size: 0.8rem; }
 
             .tour-module {
-                margin: 12px 0 20px;
+                margin: 12px 0 16px;
                 border-radius: 20px;
-                max-height: calc(100dvh - 120px);
-                max-height: calc(100vh - 120px);
+                min-height: calc(100dvh - 140px);
+                min-height: calc(100vh - 140px);
+                max-height: none;
             }
             .module-header {
                 padding: 14px 16px 10px;
@@ -420,7 +455,7 @@
             .chat-messages {
                 height: auto;
                 flex: 1 1 auto;
-                min-height: 120px;
+                min-height: 200px;
                 padding: 12px 14px;
             }
             .bubble { max-width: 92%; font-size: 0.9rem; }
@@ -432,10 +467,12 @@
                 z-index: 20;
                 box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
             }
-            .chat-input-area input {
-                min-height: 48px;
+            .chat-input-area textarea {
+                min-height: 88px;
+                max-height: 200px;
                 font-size: 16px;
-                border-radius: 14px;
+                border-radius: 16px;
+                padding: 16px 18px;
             }
             .chat-input-actions {
                 width: 100%;
@@ -445,10 +482,9 @@
                 font-size: 0.85rem;
             }
 
-            .lead-panel {
-                margin: 0 12px 16px;
-                padding: 14px 16px;
-                flex-shrink: 0;
+            .lead-panel--bottom {
+                margin: 24px 0 32px;
+                padding: 16px;
             }
             .lead-form { grid-template-columns: 1fr; }
         }
@@ -456,8 +492,8 @@
         @media (max-width: 480px) {
             .module-header p { display: none; }
             .tour-module {
-                max-height: calc(100dvh - 100px);
-                max-height: calc(100vh - 100px);
+                min-height: calc(100dvh - 120px);
+                min-height: calc(100vh - 120px);
             }
             .nav-links { display: none; }
         }
@@ -486,14 +522,7 @@
 </header>
 
 <main class="container">
-    <!-- Модуль генератора туров -->
     <div id="tourApp"></div>
-
-    <!-- Блок "О нас" для визуального завершения -->
-    <div style="background: #fff; border-radius: 28px; padding: 32px; margin: 24px 0 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
-        <h2 style="color: #01773a; font-weight: 600; margin-bottom: 12px;">О компании</h2>
-        <p style="color: #2c3e42;">Группа компаний «Туроператор ООО "Бон Вояж"» и «Планета 360» с 2016 года создают незабываемые путешествия. Наша команда экспертов подбирает туры по России, Китаю и другим направлениям, заботится о каждой детали, чтобы вы отдыхали с душой.</p>
-    </div>
 </main>
 
 <footer class="site-footer">
@@ -512,52 +541,60 @@
             new Vue({
                 el: '#tourApp',
                 template: `
-                    <div class="tour-module">
-                        <div class="module-header">
-                            <h3>✈️ AI Тур-Генератор</h3>
-                            <p>Расскажите направление, даты и бюджет в рублях — нейросеть подберёт тур из каталога</p>
-                        </div>
-
-                        <div class="llm-toolbar">
-                            <label for="llmSelect">Нейросеть:</label>
-                            <select id="llmSelect" v-model="llmProvider" :disabled="loading" @change="onLlmChange">
-                                <option v-for="p in llmProviders" :key="p.id" :value="p.id">{{ p.name }}</option>
-                            </select>
-                            <span :class="['llm-badge', llmBadgeClass]">{{ llmStatusText }}</span>
-                        </div>
-
-                        <div class="chat-messages" ref="msgContainer">
-                            <div v-for="(msg, idx) in messages" :key="idx" :class="['message', msg.role]">
-                                <div class="bubble">
-                                    <div v-if="msg.llmLabel" class="llm-badge" style="margin-bottom:8px;font-size:0.75rem;">{{ msg.llmLabel }}</div>
-                                    <div v-html="msg.text.replace(/\\n/g, '<br>')"></div>
-                                    <div v-if="msg.tour" class="tour-card" v-html="msg.tour.formatted"></div>
-                                </div>
+                    <div class="tour-app-root">
+                        <div class="tour-module">
+                            <div class="module-header">
+                                <h3>✈️ AI Тур-Генератор</h3>
+                                <p>Расскажите направление, даты и бюджет в рублях — нейросеть подберёт тур из каталога</p>
                             </div>
-                            <div v-if="loading" class="message ai">
-                                <div class="bubble">
-                                    <div class="typing-indicator">
-                                        <span></span><span></span><span></span>
+
+                            <div class="llm-toolbar">
+                                <label for="llmSelect">Нейросеть:</label>
+                                <select id="llmSelect" v-model="llmProvider" :disabled="loading" @change="onLlmChange">
+                                    <option v-for="p in llmProviders" :key="p.id" :value="p.id">{{ p.name }}</option>
+                                </select>
+                                <span :class="['llm-badge', llmBadgeClass]">{{ llmStatusText }}</span>
+                            </div>
+
+                            <div class="chat-messages" ref="msgContainer">
+                                <div v-for="(msg, idx) in messages" :key="idx" :class="['message', msg.role]">
+                                    <div class="bubble">
+                                        <div v-if="msg.llmLabel" class="llm-badge" style="margin-bottom:8px;font-size:0.75rem;">{{ msg.llmLabel }}</div>
+                                        <div v-html="msg.text.replace(/\\n/g, '<br>')"></div>
+                                        <div v-if="msg.tour" class="tour-card" v-html="msg.tour.formatted"></div>
+                                    </div>
+                                </div>
+                                <div v-if="loading" class="message ai">
+                                    <div class="bubble">
+                                        <div class="typing-indicator">
+                                            <span></span><span></span><span></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="chat-input-area">
-                            <input type="text" v-model="inputMsg" @keyup.enter="send" placeholder="Например: Китай, 10–20 июля, 80 000 руб." :disabled="loading">
-                            <div class="chat-input-actions">
-                                <button class="btn" @click="send" :disabled="loading || !inputMsg.trim()">Отправить</button>
-                                <button class="btn btn-reset" @click="reset" :disabled="loading">Сброс</button>
+                            <div class="chat-input-area">
+                                <textarea v-model="inputMsg" @keydown.enter.exact.prevent="send" rows="3" placeholder="Например: Китай, 10–20 июля, бюджет 80 000 руб." :disabled="loading"></textarea>
+                                <div class="chat-input-actions">
+                                    <button class="btn" @click="send" :disabled="loading || !inputMsg.trim()">Отправить</button>
+                                    <button class="btn btn-reset" @click="reset" :disabled="loading">Сброс</button>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="lead-panel">
+                        <div class="about-block">
+                            <h2>О компании</h2>
+                            <p>Группа компаний «Туроператор ООО «Бон Вояж»» и «Планета 360» с 2016 года создают незабываемые путешествия. Наша команда экспертов подбирает туры по России, Китаю и другим направлениям.</p>
+                        </div>
+
+                        <div class="lead-panel lead-panel--bottom">
                             <h4>📞 Заявка в турфирму</h4>
+                            <p style="color:#64748b;font-size:0.85rem;margin:-4px 0 12px;">Оставьте контакты — менеджер «Бон Вояж» перезвонит. Заявка сохраняется в базе данных сайта.</p>
                             <div class="lead-form">
                                 <input type="text" v-model="leadName" placeholder="Ваше имя *" :disabled="leadSending">
                                 <input type="tel" v-model="leadPhone" placeholder="Телефон *" :disabled="leadSending">
                                 <input type="email" class="full" v-model="leadEmail" placeholder="Email (необязательно)" :disabled="leadSending">
-                                <textarea class="full" v-model="leadMessage" placeholder="Комментарий" :disabled="leadSending"></textarea>
+                                <textarea class="full" v-model="leadMessage" placeholder="Комментарий к заявке" :disabled="leadSending"></textarea>
                                 <button class="btn full" @click="submitLead" :disabled="leadSending || !leadName.trim() || !leadPhone.trim()">
                                     {{ leadSending ? 'Отправка…' : 'Отправить заявку' }}
                                 </button>
