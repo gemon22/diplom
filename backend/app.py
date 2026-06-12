@@ -6,24 +6,22 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from ai_service import ai
-from budget_utils import format_budget_display, normalize_budget_rub
+from budget_utils import normalize_budget_rub
 from catalog_context import normalize_collected_destination
 from date_validation import validate_collected_dates
 from flight_client import flights_client
 from demo_mode import (
-    DEMO_DISCLAIMER,
-    attach_demo_flight,
     demo_activation_message,
     is_demo_mode,
     is_demo_trigger,
     mark_demo_tour,
     seed_demo_data,
 )
-from tour_links import apply_booking_links, is_valid_booking_url, resolve_agency_url, resolve_booking_url
+from tour_assembler import assemble_package, attach_db_flight, format_package_html
 from config import Config
 from database import get_db
 
@@ -103,9 +101,42 @@ async def health():
         return {"status": "degraded", "database": str(e)}
 
 
+SITE = Config.SITE_PRIMARY_URL.rstrip("/")
+
+
+def _redirect(url: str):
+    return RedirectResponse(url=url, status_code=302)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     return HTMLResponse(FRONTEND_INDEX.read_text(encoding="utf-8"))
+
+
+@app.get("/tury")
+@app.get("/tury/")
+async def redirect_tury():
+    return _redirect(f"{SITE}/tury")
+
+
+@app.get("/tours")
+@app.get("/tours/")
+async def redirect_china_tours():
+    return _redirect(f"{SITE}/country/china/tury-cn/")
+
+
+@app.get("/goryashchie-tury")
+@app.get("/goryashchie-tury/")
+async def redirect_specials():
+    return _redirect(f"{SITE}/news/")
+
+
+@app.get("/kontakty")
+@app.get("/kontakty/")
+@app.get("/contacts")
+@app.get("/contacts/")
+async def redirect_contacts():
+    return _redirect(f"{SITE}/company/contacts")
 
 
 @app.get("/api/llm/providers")
@@ -284,20 +315,27 @@ async def chat(req: ChatReq):
             hotels = non_zero_hotels
 
         if hotels:
-            used_llm = meta.get("llm_provider") or provider
-            tour = await ai.generate_tour(params, hotels, provider=used_llm)
+            flight_offers: list[dict] = []
 
             if demo:
-                flights = db.get_flights(
+                demo_flights = db.get_flights(
                     to_city=dest,
                     departure_date=params.get("date_from"),
                     return_date=params.get("date_to"),
                     source_site="demo",
-                    limit=1,
+                    limit=3,
                 )
-                tour = attach_demo_flight(tour, flights[0] if flights else None)
-                tour = mark_demo_tour(tour)
-                tour = apply_booking_links(tour, hotels, dest)
+                flight_offers = [
+                    {
+                        "origin": f.get("from_city"),
+                        "destination": f.get("to_city"),
+                        "price": f.get("price"),
+                        "airline": f.get("airline"),
+                        "link": "",
+                        "source_site": "demo",
+                    }
+                    for f in demo_flights
+                ]
             else:
                 offers = await flights_client.search_flights(
                     destination=dest or "",
@@ -309,37 +347,18 @@ async def chat(req: ChatReq):
                 )
                 if offers:
                     db.save_flights(offers[:10])
-                    best = offers[0]
-                    flight_info = f"{best.get('origin')} → {best.get('destination')}"
-                    if best.get("airline"):
-                        flight_info += f", {best.get('airline')}"
-                    link = best.get("link")
-                    if link:
-                        if link.startswith("http"):
-                            booking_link = link
-                        else:
-                            booking_link = f"https://www.aviasales.ru{link}"
-                        tour.setdefault("booking_links", {})
-                        tour["booking_links"]["self"] = booking_link
-                    tour["flight"] = {
-                        "estimated_price": best.get("price", 0),
-                        "info": flight_info,
-                    }
-                    try:
-                        hotel_price = float((tour.get("selected_hotel") or {}).get("price") or 0)
-                        flight_price = float(best.get("price") or 0)
-                        tour["total_price"] = hotel_price + flight_price
-                    except (TypeError, ValueError):
-                        pass
+                    flight_offers = offers
 
-                self_link = (tour.get("booking_links") or {}).get("self") or ""
-                if "aviasales" in self_link:
-                    tour.setdefault("booking_links", {})["agency"] = resolve_agency_url()
-                else:
-                    tour = apply_booking_links(tour, hotels, dest)
+            tour = assemble_package(params, hotels, flight_offers, demo=demo)
+            if demo and not flight_offers:
+                demo_row = db.get_flights(
+                    to_city=dest, source_site="demo", limit=1
+                )
+                tour = attach_db_flight(tour, demo_row[0] if demo_row else None)
 
+            tour = mark_demo_tour(tour) if demo else tour
             db.save_tour(qid, tour, tour.get("total_price", 0))
-            tour["formatted"] = format_tour(tour, params, demo=demo)
+            tour["formatted"] = format_package_html(tour, params, demo=demo)
         else:
             if city_pref == "москва":
                 resp_text = (
@@ -365,47 +384,72 @@ async def chat(req: ChatReq):
     )
 
 
-def format_tour(tour, params, demo: bool = False):
-    hotel = tour.get("selected_hotel", {})
-    flight = tour.get("flight", {})
-    links = tour.setdefault("booking_links", {})
-    self_link = links.get("self", "#")
-    if not is_valid_booking_url(self_link):
-        self_link = resolve_booking_url(hotel, params.get("destination"))
-    agency_link = resolve_agency_url()
-    links["self"] = self_link
-    links["agency"] = agency_link
-    tour["booking_url"] = self_link
-    budget_str = format_budget_display(params)
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_panel():
+    db = get_db()
+    today = db.get_today_stats()
+    leads = db.get_recent_leads(30)
+    tours = db.get_recent_tours(15)
+    leads_today = db.count_leads_today()
 
-    def rub(v):
-        try:
-            return f"{float(v):,.0f}".replace(",", " ") + " ₽"
-        except (TypeError, ValueError):
-            return "—"
-
-    demo_note = ""
-    if demo or tour.get("is_demo"):
-        demo_note = (
-            '<p style="color:#856404;background:#fff3cd;padding:10px 14px;border-radius:8px;">'
-            f"{DEMO_DISCLAIMER}</p>"
+    def esc(s):
+        return (
+            str(s or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
         )
 
-    return f"""
-<p><strong>Тур: {params.get('destination', '')}</strong></p>
-<p>📅 {params.get('date_from')} – {params.get('date_to')}</p>
-<p>💰 Ваш бюджет: {budget_str}</p>
-<p>🏨 <strong>{hotel.get('name', '')}</strong> — {rub(hotel.get('price', 0))}</p>
-<p>✈️ {flight.get('info', 'перелёт')} — {rub(flight.get('estimated_price', 0))}</p>
-<p><strong>Итого: {rub(tour.get('total_price', 0))}</strong></p>
-{demo_note}
-<p>{tour.get('recommendation_text', '')}</p>
-<p>
-  <a href="{self_link}" target="_blank" rel="noopener">Купить самостоятельно</a>
-  &nbsp;|&nbsp;
-  <a href="{agency_link}" target="_blank" rel="noopener">Страница турфирмы</a>
-</p>
-"""
+    lead_rows = ""
+    for lead in leads:
+        lead_rows += f"""<tr>
+          <td>{lead.get('id')}</td>
+          <td>{esc(lead.get('created_at'))}</td>
+          <td>{esc(lead.get('name'))}</td>
+          <td>{esc(lead.get('phone'))}</td>
+          <td>{esc(lead.get('tour_name'))}</td>
+          <td>{esc(lead.get('message'))}</td>
+        </tr>"""
+
+    tour_rows = ""
+    for t in tours:
+        tour_rows += f"""<tr>
+          <td>{t.get('id')}</td>
+          <td>{esc(t.get('created_at'))}</td>
+          <td>{esc(t.get('total_price'))} ₽</td>
+          <td>{esc((t.get('user_input') or '')[:80])}</td>
+        </tr>"""
+
+    html = f"""<!DOCTYPE html>
+<html lang="ru"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Панель менеджера — Бон Вояж</title>
+<style>
+body{{font-family:Inter,system-ui,sans-serif;background:#f8fafc;color:#1e293b;margin:0;padding:24px}}
+h1{{color:#01773a}} .stats{{display:flex;gap:16px;flex-wrap:wrap;margin:20px 0}}
+.card{{background:#fff;border-radius:16px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.06);min-width:140px}}
+.card b{{font-size:1.6rem;color:#01773a;display:block}}
+table{{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:16px 0}}
+th,td{{padding:10px 12px;border-bottom:1px solid #eef2f6;font-size:0.9rem;text-align:left}}
+th{{background:#f0fdf4;color:#01773a}}
+a{{color:#01773a}}
+</style></head><body>
+<h1>Панель менеджера</h1>
+<p><a href="/">← К подбору тура</a></p>
+<div class="stats">
+  <div class="card"><b>{today.get('requests_count', 0)}</b>запросов сегодня</div>
+  <div class="card"><b>{today.get('tours_generated', 0)}</b>собрано пакетов</div>
+  <div class="card"><b>{leads_today}</b>заявок сегодня</div>
+  <div class="card"><b>{len(sessions)}</b>активных сессий</div>
+</div>
+<h2>Заявки клиентов</h2>
+<table><thead><tr><th>ID</th><th>Дата</th><th>Имя</th><th>Телефон</th><th>Тур</th><th>Сообщение</th></tr></thead>
+<tbody>{lead_rows or '<tr><td colspan="6">Заявок пока нет</td></tr>'}</tbody></table>
+<h2>Собранные турпакеты</h2>
+<table><thead><tr><th>ID</th><th>Дата</th><th>Сумма</th><th>Запрос</th></tr></thead>
+<tbody>{tour_rows or '<tr><td colspan="4">Пакетов пока нет</td></tr>'}</tbody></table>
+</body></html>"""
+    return HTMLResponse(html)
 
 
 if __name__ == "__main__":

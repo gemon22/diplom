@@ -440,6 +440,47 @@ class Database:
         cursor.close()
         return row or {"requests_count": 0, "tours_generated": 0}
 
+    def get_recent_leads(self, limit: int = 50) -> list[dict]:
+        cursor = self.connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, session_id, name, phone, email, message, tour_name, created_at
+            FROM agency_leads
+            ORDER BY id DESC
+            LIMIT %s
+            """,
+            (limit,),
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        return rows
+
+    def get_recent_tours(self, limit: int = 20) -> list[dict]:
+        cursor = self.connection.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT gt.id, gt.query_id, gt.total_price, gt.created_at,
+                   uq.session_id, uq.user_input
+            FROM generated_tours gt
+            LEFT JOIN user_queries uq ON uq.id = gt.query_id
+            ORDER BY gt.id DESC
+            LIMIT %s
+            """,
+            (limit,),
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        return rows
+
+    def count_leads_today(self) -> int:
+        cursor = self.connection.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) FROM agency_leads WHERE DATE(created_at) = CURDATE()"
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        return int(row[0] or 0) if row else 0
+
     def close(self):
         if self.connection:
             self.connection.close()

@@ -57,7 +57,7 @@ LLM_PRIMARY=gigachat
 LLM_FALLBACK=true
 
 SITE_PRIMARY_URL=https://bon-voyage28.ru/
-AGENCY_CONTACT_URL=https://bon-voyage28.ru/contacts/
+AGENCY_CONTACT_URL=https://bon-voyage28.ru/company/contacts
 SEED_DEMO_ON_START=true
 PORT=8000
 EOF
