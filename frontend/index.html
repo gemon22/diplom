@@ -212,6 +212,39 @@
             color: #026e37;
             border-bottom: 1px solid;
         }
+        .tour-card .pkg-section {
+            margin-top: 14px;
+            padding: 12px 14px;
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid #e8eef4;
+        }
+        .tour-card .pkg-section h4 {
+            color: #01773a;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+        .quick-picks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 0 28px 12px;
+            background: white;
+        }
+        .quick-picks button {
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid #c5dcc9;
+            background: #f4faf6;
+            color: #01773a;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .quick-picks button:hover {
+            background: #e0f2e9;
+        }
 
         /* Форма ввода */
         .chat-input-area {
@@ -423,6 +456,10 @@
             }
             .nav-links.open { display: flex; }
 
+            .quick-picks {
+                padding: 0 14px 10px;
+            }
+
             .chat-messages {
                 height: auto;
                 flex: 1 1 auto;
@@ -499,7 +536,7 @@
 
 <footer class="site-footer">
     <div class="container">
-        © 2026 Планета 360 — Подбор тура. Все права защищены.
+        © 2026 Планета 360 — Подбор тура. <a href="/admin" style="color:#01773a;">Панель менеджера</a>
     </div>
 </footer>
 
@@ -527,7 +564,15 @@
                         <div class="tour-module">
                             <div class="module-header">
                                 <h3>✈️ Подбор тура</h3>
-                                <p>Укажите направление, даты и бюджет в рублях — мы подберём тур из каталога «Бон Вояж»</p>
+                                <p>Перелёт и проживание — отдельно, плюс готовые туры из каталога «Бон Вояж»</p>
+                            </div>
+
+                            <div class="quick-picks">
+                                <button type="button" @click="quickSend('Китай')">Китай</button>
+                                <button type="button" @click="quickSend('Таиланд')">Таиланд</button>
+                                <button type="button" @click="quickSend('Россия')">Россия</button>
+                                <button type="button" @click="quickSend('Вьетнам')">Вьетнам</button>
+                                <button type="button" @click="quickSend('Турция')">Турция</button>
                             </div>
 
                             <div class="chat-messages" ref="msgContainer">
@@ -595,7 +640,7 @@
                     if (!this.restoreChatState()) {
                         this.messages.push({
                             role: 'ai',
-                            text: '👋 Добрый день! Укажите направление из нашего каталога, даты поездки (в будущем) и бюджет в рублях. Я подберу реальный тур с сайта «Бон Вояж».'
+                            text: '👋 Добрый день! Укажите направление, даты и бюджет. Я соберу перелёт и проживание отдельно и покажу готовые туры из каталога «Бон Вояж».'
                         });
                     }
                     this.scrollToBottom();
@@ -643,6 +688,10 @@
                     clearChatState() {
                         try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch (e) { /* ignore */ }
                     },
+                    quickSend(text) {
+                        this.inputMsg = text;
+                        this.send();
+                    },
                     async send() {
                         if (!this.inputMsg.trim()) return;
                         const userMsg = this.inputMsg;
@@ -664,8 +713,15 @@
                             };
                             if (response.data.is_ready && response.data.tour_package) {
                                 aiMessage.tour = response.data.tour_package;
-                                const h = response.data.tour_package.selected_hotel;
-                                this.lastTourName = h && h.name ? h.name : '';
+                                const pkg = response.data.tour_package;
+                                if (pkg.ready_tours && pkg.ready_tours.length) {
+                                    this.lastTourName = pkg.ready_tours[0].name;
+                                } else if (pkg.modular && pkg.modular.accommodation) {
+                                    this.lastTourName = pkg.modular.accommodation.name + ' (сборка)';
+                                } else {
+                                    const h = pkg.selected_hotel;
+                                    this.lastTourName = h && h.name ? h.name : '';
+                                }
                             }
                             this.messages.push(aiMessage);
                         } catch (err) {
