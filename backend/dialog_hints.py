@@ -117,6 +117,66 @@ def _extract_duration_days(text: str) -> int | None:
     return None
 
 
+def _extract_budget(text: str) -> tuple[float | None, str | None]:
+    """Бюджет: 80 000 руб, 50к, $2000, до 120000 (не путаем с днями поездки)."""
+    t = (text or "").lower().replace("\u00a0", " ")
+
+    m = re.search(r"\$\s*(\d[\d\s]*)", t)
+    if m:
+        return float(m.group(1).replace(" ", "")), "USD"
+
+    for pat in (
+        r"(?:бюджет|до|около|примерно)\s*(\d[\d\s]{3,})(?:\s*(?:руб|₽|rub))?",
+        r"(\d[\d\s]{4,})\s*(?:руб|₽|р\.?\b)",
+        r"(?:^|[,;])\s*(\d{5,})\s*(?:$|[,;])",
+    ):
+        m = re.search(pat, t)
+        if m:
+            amount = float(m.group(1).replace(" ", ""))
+            if amount >= 1000:
+                return amount, "RUB"
+
+    m = re.search(r"(\d+)\s*к\b", t)
+    if m:
+        return float(m.group(1)) * 1000, "RUB"
+    return None, None
+
+
+def _extract_destination_hint(text: str) -> str | None:
+    """Короткие направления из типичных запросов «Бон Вояж»."""
+    t = (text or "").lower()
+    mapping = [
+        ("хэйхэ", "Китай"),
+        ("шанхай", "Китай"),
+        ("бэйдайхэ", "Китай"),
+        ("бейдайхэ", "Китай"),
+        ("хэминху", "Китай"),
+        ("дальян", "Китай"),
+        ("китай", "Китай"),
+        ("пхукет", "Таиланд"),
+        ("таиланд", "Таиланд"),
+        ("тайланд", "Таиланд"),
+        ("антали", "Турция"),
+        ("турци", "Турция"),
+        ("фукуок", "Вьетнам"),
+        ("нячанг", "Вьетнам"),
+        ("вьетнам", "Вьетнам"),
+        ("камчатк", "Россия"),
+        ("космодром", "Россия"),
+        ("росси", "Россия"),
+        ("сочи", "Россия"),
+        ("моск", "Россия"),
+        ("оаэ", "ОАЭ"),
+        ("дубай", "ОАЭ"),
+        ("япони", "Япония"),
+        ("египет", "Египет"),
+    ]
+    for key, dest in mapping:
+        if key in t:
+            return dest
+    return None
+
+
 def apply_message_hints(user_message: str, collected: dict) -> dict:
     """
     Добавляет в collected данные, которые модель часто пропускает:
@@ -162,6 +222,55 @@ def apply_message_hints(user_message: str, collected: dict) -> dict:
         if not c.get("destination"):
             c["destination"] = "Россия"
 
+    # Диапазон "10–17 декабря" / "1–8 сентября"
+    m_dash = re.search(
+        r"(\d{1,2})\s*[–\-]\s*(\d{1,2})\s+([а-яё]+)(?:\s+(\d{2,4}))?",
+        user_message,
+        re.IGNORECASE,
+    )
+    if m_dash:
+        d1, d2, mon, y = m_dash.groups()
+        mm = _month_from_word(mon)
+        if mm:
+            yy = _parse_year(y, ref_year)
+            try:
+                dt1 = _normalize_future(date(yy, mm, int(d1)))
+                dt2 = _normalize_future(date(yy, mm, int(d2)))
+                if dt2 >= dt1:
+                    c["date_from"] = dt1.isoformat()
+                    c["date_to"] = dt2.isoformat()
+            except ValueError:
+                pass
+
+    # «с 5 августа на 10 дней»
+    m_sd = re.search(
+        r"с\s*(\d{1,2})\s+([а-яё]+)(?:\s+(\d{2,4}))?\s+на\s+(\d{1,2})\s+дн",
+        um,
+        re.IGNORECASE,
+    )
+    if m_sd:
+        d1, mon, y, days_n = m_sd.groups()
+        mm = _month_from_word(mon)
+        if mm:
+            yy = _parse_year(y, ref_year)
+            try:
+                dt1 = _normalize_future(date(yy, mm, int(d1)))
+                c["date_from"] = dt1.isoformat()
+                c["date_to"] = (dt1 + timedelta(days=int(days_n))).isoformat()
+            except ValueError:
+                pass
+
+    # Имя клиента
+    m_name = re.search(
+        r"меня зовут\s+([а-яёa-z][а-яёa-z\-]{1,30})",
+        um,
+        re.IGNORECASE,
+    )
+    if m_name and not c.get("name"):
+        name = m_name.group(1).strip().title()
+        if name.lower() not in ("хочу", "хотел", "хотела", "ищу"):
+            c["name"] = name
+
     # Сначала диапазон "с ... по ..."
     d_from, d_to = _extract_range(user_message, ref_year)
     if d_from and d_to:
@@ -192,5 +301,29 @@ def apply_message_hints(user_message: str, collected: dict) -> dict:
             c["date_to"] = (existing_from + timedelta(days=days)).isoformat()
         elif existing_to and not existing_from:
             c["date_from"] = (existing_to - timedelta(days=days)).isoformat()
+
+    # Бюджет
+    budget, currency = _extract_budget(user_message)
+    if budget is not None:
+        c["budget"] = budget
+        if currency:
+            c["budget_currency"] = currency
+
+    # Направление одним словом / в составе фразы
+    if not c.get("destination"):
+        dest_hint = _extract_destination_hint(user_message)
+        if dest_hint:
+            c["destination"] = dest_hint
+
+    # Предпочтения (семейный, школьники, море)
+    if not c.get("preferences"):
+        prefs = []
+        for word in ("семейн", "школьник", "море", "пляж", "экскурс", "лечебн", "шоп"):
+            if word in um:
+                prefs.append(word)
+        if "благовещенск" in um:
+            prefs.append("Благовещенск")
+        if prefs:
+            c["preferences"] = ", ".join(prefs)
 
     return c

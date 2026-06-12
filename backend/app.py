@@ -80,6 +80,18 @@ class FlightSearchReq(BaseModel):
 
 @app.on_event("startup")
 async def startup():
+    try:
+        from dialog_training import training_stats
+
+        s = training_stats()
+        logger.info(
+            "Dialog training loaded: %s examples (%s ready)",
+            s.get("total_examples"),
+            s.get("ready_examples"),
+        )
+    except Exception as e:
+        logger.warning("Dialog training not loaded: %s", e)
+
     db = get_db()
     if Config.SEED_DEMO_ON_START:
         try:
@@ -142,6 +154,25 @@ async def redirect_contacts():
 @app.get("/api/llm/providers")
 async def llm_providers():
     return {"providers": ai.list_providers(), "default": Config.LLM_PROVIDER}
+
+
+@app.get("/api/training/stats")
+async def training_stats_api():
+    from dialog_training import training_stats
+    from training_loader import validate_all_examples
+
+    try:
+        db = get_db()
+        rows = db.get_all_hotels_sample(limit=50)
+        dests = list({r.get("destination") for r in rows if r.get("destination")})
+    except Exception:
+        dests = None
+    validation = validate_all_examples(catalog_dests=dests)
+    return {
+        **training_stats(),
+        "validation_avg_pct": validation.get("avg_score_pct", 0),
+        "validation_count": validation.get("count", 0),
+    }
 
 
 @app.get("/admin/stats")
@@ -445,6 +476,16 @@ a{{color:#01773a}}
 <h2>Заявки клиентов</h2>
 <table><thead><tr><th>ID</th><th>Дата</th><th>Имя</th><th>Телефон</th><th>Тур</th><th>Сообщение</th></tr></thead>
 <tbody>{lead_rows or '<tr><td colspan="6">Заявок пока нет</td></tr>'}</tbody></table>
+<h2>Обучение диалога</h2>
+<p id="trainingStats">Загрузка...</p>
+<script>
+fetch('/api/training/stats').then(r=>r.json()).then(d=>{{
+  document.getElementById('trainingStats').innerHTML =
+    'Примеров: <b>'+d.total_examples+'</b>, ready: <b>'+d.ready_examples+
+    '</b>, точность правил: <b>'+d.validation_avg_pct+'%</b>. '+
+    '<a href="/api/training/stats">JSON</a>';
+}}).catch(()=>{{}});
+</script>
 <h2>Собранные турпакеты</h2>
 <table><thead><tr><th>ID</th><th>Дата</th><th>Сумма</th><th>Запрос</th></tr></thead>
 <tbody>{tour_rows or '<tr><td colspan="4">Пакетов пока нет</td></tr>'}</tbody></table>
