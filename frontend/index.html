@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Планета 360 — AI Тур-Генератор</title>
+    <title>Планета 360 — Подбор тура</title>
     <!-- Шрифты и основные стили -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <style>
@@ -54,10 +54,21 @@
             transition: opacity 0.2s;
             opacity: 0.9;
         }
-        .nav-links a:hover {
+        .nav-links a:hover,
+        .nav-links a.active {
             opacity: 1;
             text-decoration: underline;
             text-underline-offset: 6px;
+        }
+        .nav-toggle {
+            display: none;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            font-size: 1.4rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
         }
         .contacts-header {
             background: rgba(255,255,255,0.1);
@@ -288,53 +299,6 @@
             transform: translateY(1px);
         }
 
-        .llm-toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 28px;
-            background: #f4faf6;
-            border-bottom: 1px solid #e2efe6;
-            font-size: 0.85rem;
-        }
-        .llm-toolbar label {
-            color: #475569;
-            font-weight: 500;
-        }
-        .llm-toolbar select {
-            padding: 8px 14px;
-            border-radius: 24px;
-            border: 1px solid #c5dcc9;
-            background: white;
-            font-family: inherit;
-            min-width: 200px;
-        }
-        .llm-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            background: #e0f2e9;
-            color: #01773a;
-            font-weight: 500;
-            transition: background 0.3s, transform 0.2s;
-        }
-        .llm-badge.switching {
-            background: #fff3cd;
-            color: #856404;
-            animation: pulseBadge 0.8s ease infinite;
-        }
-        .llm-badge.fallback {
-            background: #e8f4fd;
-            color: #0c5460;
-        }
-        @keyframes pulseBadge {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.65; }
-        }
-
         .tour-app-root {
             display: flex;
             flex-direction: column;
@@ -421,8 +385,13 @@
 
         /* Адаптивность */
         @media (max-width: 780px) {
-            .navbar { flex-direction: column; gap: 12px; align-items: stretch; text-align: center; }
-            .nav-links { justify-content: center; flex-wrap: wrap; gap: 16px; }
+            .navbar {
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: center;
+            }
+            .logo { flex: 1; text-align: left; }
+            .contacts-header { width: 100%; text-align: center; }
             .container { padding: 0 12px; }
             .site-header .navbar { padding: 12px 16px; }
             .contacts-header { font-size: 0.8rem; }
@@ -444,13 +413,15 @@
                 line-height: 1.35;
             }
 
-            .llm-toolbar {
-                padding: 8px 12px;
-                gap: 8px;
-                flex-shrink: 0;
+            .nav-toggle { display: block; }
+            .nav-links {
+                display: none;
+                width: 100%;
+                flex-direction: column;
+                gap: 10px;
+                padding-top: 8px;
             }
-            .llm-toolbar select { min-width: 0; flex: 1 1 100%; }
-            .llm-badge { font-size: 0.75rem; }
+            .nav-links.open { display: flex; }
 
             .chat-messages {
                 height: auto;
@@ -495,7 +466,6 @@
                 min-height: calc(100dvh - 120px);
                 min-height: calc(100vh - 120px);
             }
-            .nav-links { display: none; }
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
@@ -508,12 +478,14 @@
         <div class="logo">
             <a href="/" style="color:#fff;text-decoration:none;font-weight:700;font-size:1.05rem;">Планета 360</a>
         </div>
-        <ul class="nav-links">
-            <li><a href="/">Главная</a></li>
-            <li><a href="/tury">Туры</a></li>
-            <li><a href="/tours">Туры по Китаю</a></li>
-            <li><a href="/goryashchie-tury">Горящие туры</a></li>
-            <li><a href="/kontakty">Контакты</a></li>
+        <button type="button" class="nav-toggle" id="navToggle" aria-label="Меню">☰</button>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="https://bon-voyage28.ru/">Главная</a></li>
+            <li><a href="https://bon-voyage28.ru/tury">Туры</a></li>
+            <li><a href="https://bon-voyage28.ru/country/china/tury-cn/">Туры по Китаю</a></li>
+            <li><a href="https://bon-voyage28.ru/news/">Спецпредложения</a></li>
+            <li><a href="https://bon-voyage28.ru/company/contacts">Контакты</a></li>
+            <li><a href="/" class="active">Подбор тура</a></li>
         </ul>
         <div class="contacts-header">
             📞 <a href="tel:+74162317771">+7 (4162) 317-771</a>
@@ -527,7 +499,7 @@
 
 <footer class="site-footer">
     <div class="container">
-        © 2026 Планета 360 — AI Тур-Генератор. Все права защищены.
+        © 2026 Планета 360 — Подбор тура. Все права защищены.
     </div>
 </footer>
 
@@ -537,6 +509,14 @@
         const CHAT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
         document.addEventListener('DOMContentLoaded', function() {
+            var navToggle = document.getElementById('navToggle');
+            var navLinks = document.getElementById('navLinks');
+            if (navToggle && navLinks) {
+                navToggle.addEventListener('click', function() {
+                    navLinks.classList.toggle('open');
+                });
+            }
+
             const mountEl = document.getElementById('tourApp');
             if (!mountEl) return;
 
@@ -546,22 +526,13 @@
                     <div class="tour-app-root">
                         <div class="tour-module">
                             <div class="module-header">
-                                <h3>✈️ AI Тур-Генератор</h3>
-                                <p>Расскажите направление, даты и бюджет в рублях — нейросеть подберёт тур из каталога</p>
-                            </div>
-
-                            <div class="llm-toolbar">
-                                <label for="llmSelect">Нейросеть:</label>
-                                <select id="llmSelect" v-model="llmProvider" :disabled="loading" @change="onLlmChange">
-                                    <option v-for="p in llmProviders" :key="p.id" :value="p.id">{{ p.name }}</option>
-                                </select>
-                                <span :class="['llm-badge', llmBadgeClass]">{{ llmStatusText }}</span>
+                                <h3>✈️ Подбор тура</h3>
+                                <p>Укажите направление, даты и бюджет в рублях — мы подберём тур из каталога «Бон Вояж»</p>
                             </div>
 
                             <div class="chat-messages" ref="msgContainer">
                                 <div v-for="(msg, idx) in messages" :key="idx" :class="['message', msg.role]">
                                     <div class="bubble">
-                                        <div v-if="msg.llmLabel" class="llm-badge" style="margin-bottom:8px;font-size:0.75rem;">{{ msg.llmLabel }}</div>
                                         <div v-html="msg.text.replace(/\\n/g, '<br>')"></div>
                                         <div v-if="msg.tour" class="tour-card" v-html="msg.tour.formatted"></div>
                                     </div>
@@ -611,11 +582,6 @@
                     messages: [],
                     inputMsg: '',
                     loading: false,
-                    llmProviders: [{ id: 'auto', name: 'Авто (с запасным)' }],
-                    llmProvider: 'auto',
-                    llmStatusText: 'Готов к диалогу',
-                    llmBadgeClass: '',
-                    lastLlmLabel: '',
                     leadName: '',
                     leadPhone: '',
                     leadEmail: '',
@@ -625,14 +591,7 @@
                     leadError: '',
                     lastTourName: ''
                 },
-                computed: {
-                    providerLabel() {
-                        const p = this.llmProviders.find(x => x.id === this.llmProvider);
-                        return p ? p.name : this.llmProvider;
-                    }
-                },
                 mounted() {
-                    this.loadLlmProviders();
                     if (!this.restoreChatState()) {
                         this.messages.push({
                             role: 'ai',
@@ -650,7 +609,6 @@
                                     return {
                                         role: m.role,
                                         text: m.text,
-                                        llmLabel: m.llmLabel || '',
                                         tour: m.tour ? {
                                             formatted: m.tour.formatted,
                                             selected_hotel: m.tour.selected_hotel,
@@ -659,7 +617,6 @@
                                         } : null
                                     };
                                 }),
-                                llmProvider: this.llmProvider,
                                 lastTourName: this.lastTourName,
                                 savedAt: Date.now()
                             }));
@@ -677,7 +634,6 @@
                             if (!data.messages || !data.messages.length) return false;
                             this.messages = data.messages;
                             this.sessionId = data.sessionId || null;
-                            this.llmProvider = data.llmProvider || 'auto';
                             this.lastTourName = data.lastTourName || '';
                             return true;
                         } catch (e) {
@@ -687,34 +643,6 @@
                     clearChatState() {
                         try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch (e) { /* ignore */ }
                     },
-                    async loadLlmProviders() {
-                        try {
-                            const res = await axios.get('/api/llm/providers');
-                            if (res.data.providers && res.data.providers.length) {
-                                this.llmProviders = res.data.providers;
-                            }
-                            if (res.data.default) {
-                                this.llmProvider = res.data.default;
-                            }
-                        } catch (e) { /* defaults */ }
-                    },
-                    onLlmChange() {
-                        this.llmBadgeClass = 'switching';
-                        this.llmStatusText = 'Переключение на ' + this.providerLabel + '…';
-                        setTimeout(() => {
-                            this.llmBadgeClass = '';
-                            this.llmStatusText = 'Выбрано: ' + this.providerLabel;
-                        }, 1200);
-                    },
-                    setLlmActive(label, fallback) {
-                        if (fallback) {
-                            this.llmBadgeClass = 'fallback';
-                            this.llmStatusText = 'Запасная: ' + label;
-                        } else {
-                            this.llmBadgeClass = '';
-                            this.llmStatusText = 'Ответ: ' + label;
-                        }
-                    },
                     async send() {
                         if (!this.inputMsg.trim()) return;
                         const userMsg = this.inputMsg;
@@ -722,27 +650,17 @@
                         this.inputMsg = '';
                         this.saveChatState();
                         this.loading = true;
-                        this.llmBadgeClass = 'switching';
-                        this.llmStatusText = 'Запрос к ' + this.providerLabel + '…';
                         this.scrollToBottom();
 
                         try {
                             const response = await axios.post('/api/chat', {
                                 session_id: this.sessionId,
-                                message: userMsg,
-                                llm_provider: this.llmProvider
+                                message: userMsg
                             });
                             this.sessionId = response.data.session_id;
-                            const label = response.data.llm_provider_label || response.data.llm_provider || '';
-                            const fallback = response.data.llm_fallback;
-                            if (label) {
-                                this.setLlmActive(label, fallback);
-                                this.lastLlmLabel = (fallback ? '↪ ' : '') + label;
-                            }
                             const aiMessage = {
                                 role: 'ai',
-                                text: response.data.response,
-                                llmLabel: this.lastLlmLabel
+                                text: response.data.response
                             };
                             if (response.data.is_ready && response.data.tour_package) {
                                 aiMessage.tour = response.data.tour_package;
@@ -752,8 +670,6 @@
                             this.messages.push(aiMessage);
                         } catch (err) {
                             console.error('Chat error', err);
-                            this.llmBadgeClass = '';
-                            this.llmStatusText = 'Ошибка соединения';
                             this.messages.push({
                                 role: 'ai',
                                 text: '❌ Не удалось связаться с сервером. Запустите: python run_server.py'
