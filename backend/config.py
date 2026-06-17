@@ -70,6 +70,12 @@ class Config:
         "true",
         "yes",
     )
+    # Случайные перелёты в БД для сборки стоимости (если API недоступен)
+    SEED_FLIGHTS_ON_START = os.getenv("SEED_FLIGHTS_ON_START", "true").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     # Сайты для парсинга
     SITE_PRIMARY_URL = os.getenv("SITE_PRIMARY_URL", "https://bon-voyage28.ru/")

@@ -21,6 +21,8 @@ from demo_mode import (
     mark_demo_tour,
     seed_demo_data,
 )
+from flight_seed import fetch_flights_from_db, seed_catalog_flights
+from tour_links import fix_stale_urls_in_db
 from tour_assembler import assemble_package, attach_db_flight, format_package_html
 from config import Config
 from database import get_db
@@ -93,10 +95,20 @@ async def startup():
         logger.warning("Dialog training not loaded: %s", e)
 
     db = get_db()
+    try:
+        fixed = fix_stale_urls_in_db(db)
+        if fixed:
+            logger.info("Fixed %s stale tour URLs in database", fixed)
+    except Exception as e:
+        logger.warning("URL fix failed: %s", e)
+    if Config.SEED_FLIGHTS_ON_START:
+        try:
+            n = seed_catalog_flights(db)
+            logger.info("Flight catalog seed: %s flights in DB", n)
+        except Exception as e:
+            logger.warning("Flight seed failed: %s", e)
     if Config.SEED_DEMO_ON_START:
         try:
-            from demo_mode import seed_demo_data
-
             n = seed_demo_data(db)
             logger.info("Demo seed on start: %s records", n)
         except Exception as e:
@@ -128,7 +140,7 @@ async def serve_frontend():
 @app.get("/tury")
 @app.get("/tury/")
 async def redirect_tury():
-    return _redirect(f"{SITE}/tury")
+    return _redirect(f"{SITE}/country/china/tury-cn/")
 
 
 @app.get("/tours")
@@ -379,6 +391,14 @@ async def chat(req: ChatReq):
                 if offers:
                     db.save_flights(offers[:10])
                     flight_offers = offers
+                if not flight_offers and dest:
+                    flight_offers = fetch_flights_from_db(
+                        db,
+                        dest,
+                        params.get("date_from") or "",
+                        params.get("date_to") or "",
+                        limit=5,
+                    )
 
             tour = assemble_package(params, hotels, flight_offers, demo=demo)
             if demo and not flight_offers:

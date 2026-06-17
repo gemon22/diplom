@@ -266,6 +266,22 @@ class Database:
         self.connection.commit()
         cursor.close()
 
+    def count_flights_by_source(self, source_site: str) -> int:
+        cursor = self.connection.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) FROM flights WHERE source_site = %s",
+            (source_site,),
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        return int(row[0] or 0) if row else 0
+
+    def clear_flights_by_source(self, source_site: str):
+        cursor = self.connection.cursor()
+        cursor.execute("DELETE FROM flights WHERE source_site = %s", (source_site,))
+        self.connection.commit()
+        cursor.close()
+
     def get_flights(
         self,
         to_city=None,

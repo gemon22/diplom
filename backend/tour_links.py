@@ -7,28 +7,47 @@ from urllib.parse import urlparse
 
 from config import Config
 
-# Страницы, которые существуют на bon-voyage28.ru (проверено)
+# Реальные страницы каталога (проверено: /tury — пустая страница!)
 DESTINATION_CATALOG_URLS = {
-    "Китай": "https://bon-voyage28.ru/tury/",
-    "Россия": "https://bon-voyage28.ru/tury/",
-    "Таиланд": "https://bon-voyage28.ru/tury/",
-    "Турция": "https://bon-voyage28.ru/tury/",
-    "Вьетнам": "https://bon-voyage28.ru/tury/",
-    "Япония": "https://bon-voyage28.ru/tury/",
-    "ОАЭ": "https://bon-voyage28.ru/tury/",
-    "Египет": "https://bon-voyage28.ru/tury/",
+    "Китай": "https://bon-voyage28.ru/country/china/tury-cn/",
+    "Россия": "https://bon-voyage28.ru/country/russia/tury/tury-po-rossii/",
+    "Таиланд": "https://bon-voyage28.ru/country/thailand",
+    "Турция": "https://bon-voyage28.ru/country/turkey",
+    "Вьетнам": "https://bon-voyage28.ru/country/vietnam",
+    "ОАЭ": "https://bon-voyage28.ru/country/uae",
+    "Япония": "https://bon-voyage28.ru/",
+    "Египет": "https://bon-voyage28.ru/",
+    "Корея": "https://bon-voyage28.ru/",
+    "Греция": "https://bon-voyage28.ru/",
+    "Испания": "https://bon-voyage28.ru/",
+    "Италия": "https://bon-voyage28.ru/",
 }
+
+SITE_HOME = "https://bon-voyage28.ru/"
 
 PLACEHOLDER_MARKERS = ("/demo/", "example.com", "localhost", "127.0.0.1")
 
-# Тестовые slug из demo_mode — на сайте их нет (404)
+# Пустая / битая страница каталога
+_GENERIC_CATALOG_PATHS = frozenset({"/tury", "/tury/", "/tours", "/tours/"})
+
 _FAKE_TOUR_SLUG = re.compile(
     r"/tury/(china|thai|turkey|viet|russia|japan|uae)-\d+/?$",
     re.I,
 )
 
-# Страницы, которые отдают 404
 _DEAD_PATHS = ("/contacts", "/contacts/", "/kontakty", "/kontakty/")
+
+
+def _path_of(url: str) -> str:
+    parsed = urlparse(url.lower().strip())
+    path = (parsed.path or "/").rstrip("/") or "/"
+    return path
+
+
+def is_generic_catalog_url(url: str | None) -> bool:
+    if not url:
+        return True
+    return _path_of(url) in _GENERIC_CATALOG_PATHS
 
 
 def is_valid_booking_url(url: str | None) -> bool:
@@ -45,9 +64,10 @@ def is_valid_booking_url(url: str | None) -> bool:
         return False
     allowed = ("bon-voyage28.ru", "bonvoyage28.ru", "www.bon-voyage28.ru")
     if not any(host == d or host.endswith("." + d) for d in allowed):
-        # Aviasales и другие внешние агрегаторы — допустимы для «Купить самостоятельно»
         return host.endswith("aviasales.ru") or "aviasales" in host
-    path = (parsed.path or "/").rstrip("/") or "/"
+    path = _path_of(low)
+    if path in _GENERIC_CATALOG_PATHS:
+        return False
     if path in _DEAD_PATHS or path + "/" in _DEAD_PATHS:
         return False
     if _FAKE_TOUR_SLUG.search(parsed.path or ""):
@@ -67,11 +87,11 @@ def catalog_url_for_destination(destination: str | None) -> str:
     dest = (destination or "").strip()
     if dest in DESTINATION_CATALOG_URLS:
         return DESTINATION_CATALOG_URLS[dest]
-    return Config.SITE_PRIMARY_URL.rstrip("/") + "/"
+    return SITE_HOME
 
 
 def resolve_booking_url(hotel: dict | None, destination: str | None = None) -> str:
-    """Ссылка «Купить самостоятельно» — только на существующие страницы."""
+    """Ссылка на тур — конкретная страница с сайта, не пустой /tury."""
     h = hotel or {}
     raw = h.get("source_url") or ""
     if is_valid_booking_url(raw):
@@ -84,7 +104,7 @@ def resolve_agency_url() -> str:
     url = Config.AGENCY_CONTACT_URL or Config.SITE_PRIMARY_URL
     if is_valid_booking_url(url):
         return normalize_external_url(url)
-    return Config.SITE_PRIMARY_URL.rstrip("/") + "/"
+    return SITE_HOME
 
 
 def find_hotel_in_catalog(hotels_data: list, tour: dict) -> dict:
@@ -107,3 +127,36 @@ def apply_booking_links(tour: dict, hotels_data: list, destination: str | None =
     links["agency"] = resolve_agency_url()
     tour["booking_url"] = links["self"]
     return tour
+
+
+def fix_stale_urls_in_db(db) -> int:
+    """Обновляет в БД ссылки на /tury и фейковые slug → рабочие страницы."""
+    cursor = db.connection.cursor(dictionary=True)
+    cursor.execute(
+        """
+        SELECT id, destination, source_url FROM hotels
+        WHERE source_url LIKE '%/tury%'
+           OR source_url LIKE '%china-%'
+           OR source_url LIKE '%thai-%'
+           OR source_url LIKE '%turkey-%'
+           OR source_url LIKE '%viet-%'
+           OR source_url LIKE '%russia-%'
+           OR source_url LIKE '%japan-%'
+           OR source_url LIKE '%uae-%'
+        """
+    )
+    rows = cursor.fetchall()
+    updated = 0
+    for row in rows:
+        url = row.get("source_url") or ""
+        if is_valid_booking_url(url):
+            continue
+        new_url = catalog_url_for_destination(row.get("destination"))
+        cursor.execute(
+            "UPDATE hotels SET source_url = %s WHERE id = %s",
+            (new_url, row["id"]),
+        )
+        updated += 1
+    db.connection.commit()
+    cursor.close()
+    return updated
