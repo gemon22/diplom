@@ -29,6 +29,10 @@
     .form-box { background: #fff; padding: 20px; border-radius: 14px; max-width: 420px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
     .form-box label { display: block; font-size: 0.85rem; color: #475569; margin: 12px 0 6px; }
     .form-box input, .form-box select { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; }
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 42px; }
+    .pw-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 4px; font-size: 1.05rem; color: #64748b; line-height: 1; }
+    .pw-toggle:hover { color: #01773a; }
     .form-box button { margin-top: 16px; padding: 10px 20px; background: #01773a; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
     .msg { font-size: 0.9rem; margin-top: 10px; }
     .msg.ok { color: #01773a; }
@@ -37,6 +41,14 @@
     @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
     .params { font-size: 0.78rem; color: #64748b; max-width: 220px; word-break: break-word; }
     a { color: #01773a; }
+    .analytics-box { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.05); max-width: 640px; }
+    .analytics-box h3 { margin: 0 0 6px; color: #01773a; }
+    .analytics-meta { font-size: 0.85rem; color: #64748b; margin-bottom: 20px; }
+    .dest-row { display: grid; grid-template-columns: 110px 1fr 48px; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .dest-name { font-weight: 600; font-size: 0.9rem; }
+    .dest-bar-wrap { background: #e2e8f0; border-radius: 8px; height: 22px; overflow: hidden; }
+    .dest-bar { background: linear-gradient(90deg, #01773a, #22c55e); height: 100%; border-radius: 8px; min-width: 4px; transition: width .4s ease; }
+    .dest-count { font-weight: 700; color: #01773a; text-align: right; }
   </style>
 </head>
 <body>
@@ -54,6 +66,7 @@
 
     <nav class="tabs">
       <button type="button" class="active" data-tab="queries">Запросы <span class="live-dot"></span></button>
+      <button type="button" data-tab="analytics">Аналитика</button>
       <button type="button" data-tab="leads">Заявки</button>
       <button type="button" data-tab="tours">Турпакеты</button>
       <button type="button" data-tab="managers" id="tabManagers" style="display:none">Менеджеры</button>
@@ -67,6 +80,14 @@
           <thead><tr><th>ID</th><th>Время</th><th>Сессия</th><th>Сообщение</th><th>Параметры</th></tr></thead>
           <tbody id="queriesBody"></tbody>
         </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-analytics">
+      <div class="analytics-box">
+        <h3>Куда хотят ехать клиенты</h3>
+        <p class="analytics-meta" id="analyticsMeta">Загрузка...</p>
+        <div id="analyticsChart"></div>
       </div>
     </section>
 
@@ -94,7 +115,10 @@
         <label>Логин</label>
         <input id="newLogin" type="text" minlength="3">
         <label>Пароль</label>
-        <input id="newPass" type="password" minlength="4">
+        <div class="pw-wrap">
+          <input id="newPass" type="password" minlength="4">
+          <button type="button" class="pw-toggle" onclick="togglePw('newPass', this)" title="Показать пароль">👁</button>
+        </div>
         <label>Роль</label>
         <select id="newRole"><option value="manager">Менеджер</option><option value="admin">Администратор</option></select>
         <button type="button" onclick="createManager()">Создать</button>
@@ -114,9 +138,15 @@
         <label>Новый логин</label>
         <input id="profLogin" type="text">
         <label>Текущий пароль *</label>
-        <input id="profCur" type="password" required>
+        <div class="pw-wrap">
+          <input id="profCur" type="password" required>
+          <button type="button" class="pw-toggle" onclick="togglePw('profCur', this)" title="Показать пароль">👁</button>
+        </div>
         <label>Новый пароль (оставьте пустым, если не меняете)</label>
-        <input id="profNew" type="password">
+        <div class="pw-wrap">
+          <input id="profNew" type="password">
+          <button type="button" class="pw-toggle" onclick="togglePw('profNew', this)" title="Показать пароль">👁</button>
+        </div>
         <button type="button" onclick="saveProfile()">Сохранить</button>
         <p class="msg" id="profMsg"></p>
       </div>
@@ -130,6 +160,14 @@ let queriesPoll = null;
 
 function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function togglePw(id, btn) {
+  const inp = document.getElementById(id);
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
+  btn.title = show ? 'Скрыть пароль' : 'Показать пароль';
 }
 
 function fmtParams(p) {
@@ -161,6 +199,7 @@ async function init() {
     loadManagers();
   }
   loadStats();
+  loadAnalytics();
   loadLeads();
   loadTours();
   loadQueriesInitial();
@@ -174,6 +213,23 @@ async function loadStats() {
     '<div class="card"><b>' + d.today_requests + '</b><span>запросов сегодня</span></div>' +
     '<div class="card"><b>' + d.today_tours + '</b><span>турпакетов</span></div>' +
     '<div class="card"><b>' + d.leads_today + '</b><span>заявок сегодня</span></div>';
+}
+
+async function loadAnalytics() {
+  const data = await api('/admin/api/analytics/destinations');
+  const items = data.items || [];
+  const max = items.length ? items[0].count : 1;
+  document.getElementById('analyticsMeta').textContent =
+    'Найдено направлений в ' + data.matched_queries + ' из ' + data.total_queries + ' запросов';
+  document.getElementById('analyticsChart').innerHTML = items.length
+    ? items.map(function (r) {
+        const pct = Math.round((r.count / max) * 100);
+        return '<div class="dest-row">' +
+          '<span class="dest-name">' + esc(r.destination) + '</span>' +
+          '<div class="dest-bar-wrap"><div class="dest-bar" style="width:' + pct + '%"></div></div>' +
+          '<span class="dest-count">' + r.count + '</span></div>';
+      }).join('')
+    : '<p style="color:#64748b">Пока нет данных о направлениях</p>';
 }
 
 async function loadLeads() {
@@ -284,6 +340,7 @@ document.querySelectorAll('.tabs button').forEach(btn => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'analytics') loadAnalytics();
   };
 });
 

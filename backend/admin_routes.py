@@ -191,6 +191,12 @@ async def admin_update_profile(req: ProfileReq, request: Request):
     return response
 
 
+@router.get("/admin/api/analytics/destinations")
+async def admin_destination_analytics(request: Request, limit: int = 15):
+    _require_manager(request)
+    return get_db().get_destination_stats(limit=limit)
+
+
 @router.get("/admin/stats")
 async def admin_stats_legacy(request: Request):
     _require_manager(request)
@@ -214,6 +220,10 @@ def _login_html() -> str:
 h1{color:#01773a;font-size:1.4rem;margin:0 0 8px}p{color:#64748b;font-size:.9rem;margin:0 0 24px}
 label{display:block;font-size:.85rem;color:#475569;margin-bottom:6px}
 input{width:100%;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;font-size:1rem;margin-bottom:16px}
+.pw-wrap{position:relative;margin-bottom:16px}
+.pw-wrap input{margin-bottom:0;padding-right:44px}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:1;color:#64748b;font-size:1.1rem}
+.pw-toggle:hover{color:#01773a}
 button{width:100%;padding:12px;background:#01773a;color:#fff;border:none;border-radius:12px;font-weight:600;font-size:1rem;cursor:pointer}
 button:hover{background:#02612f}.err{color:#b91c1c;font-size:.85rem;margin-top:12px;display:none}
 a{color:#01773a}
@@ -225,13 +235,23 @@ a{color:#01773a}
     <label>Логин</label>
     <input name="username" id="username" required autocomplete="username">
     <label>Пароль</label>
-    <input name="password" id="password" type="password" required autocomplete="current-password">
+    <div class="pw-wrap">
+      <input name="password" id="password" type="password" required autocomplete="current-password">
+      <button type="button" class="pw-toggle" onclick="togglePw('password',this)" title="Показать пароль" aria-label="Показать пароль">👁</button>
+    </div>
     <button type="submit">Войти</button>
     <p class="err" id="err"></p>
   </form>
   <p style="margin-top:20px;font-size:.85rem"><a href="/">← На сайт</a></p>
 </div>
 <script>
+function togglePw(id, btn){
+  const inp=document.getElementById(id);
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  btn.textContent=show?'🙈':'👁';
+  btn.title=show?'Скрыть пароль':'Показать пароль';
+}
 document.getElementById('loginForm').onsubmit=async function(e){
   e.preventDefault();
   const err=document.getElementById('err');
