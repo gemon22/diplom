@@ -29,11 +29,11 @@
     .form-box { background: #fff; padding: 20px; border-radius: 14px; max-width: 420px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
     .form-box label { display: block; font-size: 0.85rem; color: #475569; margin: 12px 0 6px; }
     .form-box input, .form-box select { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; }
-    .pw-wrap { position: relative; }
-    .pw-wrap input { padding-right: 42px; }
-    .pw-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 4px; font-size: 1.05rem; color: #64748b; line-height: 1; }
-    .pw-toggle:hover { color: #01773a; }
-    .form-box button { margin-top: 16px; padding: 10px 20px; background: #01773a; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    .pw-wrap { position: relative; width: 100%; }
+    .pw-wrap input { padding-right: 42px; width: 100%; }
+    .pw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: auto; min-width: 0; height: auto; margin: 0; background: none; border: none; cursor: pointer; padding: 6px; font-size: 1.05rem; color: #64748b; line-height: 1; box-shadow: none; font-weight: normal; }
+    .pw-toggle:hover { color: #01773a; background: none; }
+    .form-box button:not(.pw-toggle) { margin-top: 16px; padding: 10px 20px; background: #01773a; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
     .msg { font-size: 0.9rem; margin-top: 10px; }
     .msg.ok { color: #01773a; }
     .msg.err { color: #b91c1c; }
