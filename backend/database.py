@@ -523,8 +523,8 @@ class Database:
         return rows
 
     def get_destination_stats(self, limit: int = 15) -> dict:
-        """Считает популярные направления по extracted_params и тексту запроса."""
-        from dialog_hints import _extract_destination_hint
+        """Считает популярные направления только по репликам, где явно указана страна."""
+        from dialog_hints import destination_from_message
 
         cursor = self.connection.cursor(dictionary=True)
         cursor.execute(
@@ -541,17 +541,14 @@ class Database:
         counts: dict[str, int] = {}
         matched = 0
         for r in rows:
-            dest = None
             ep = r.get("extracted_params")
             if isinstance(ep, str):
                 try:
                     ep = json.loads(ep)
                 except json.JSONDecodeError:
                     ep = None
-            if isinstance(ep, dict) and ep.get("destination"):
-                dest = str(ep["destination"]).strip()
-            if not dest:
-                dest = _extract_destination_hint(r.get("user_input") or "")
+            ep_dest = ep.get("destination") if isinstance(ep, dict) else None
+            dest = destination_from_message(r.get("user_input") or "", ep_dest)
             if dest:
                 matched += 1
                 counts[dest] = counts.get(dest, 0) + 1
@@ -562,7 +559,6 @@ class Database:
         ]
         return {
             "items": items,
-            "total_queries": len(rows),
             "matched_queries": matched,
         }
 

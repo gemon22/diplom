@@ -220,7 +220,7 @@ async function loadAnalytics() {
   const items = data.items || [];
   const max = items.length ? items[0].count : 1;
   document.getElementById('analyticsMeta').textContent =
-    'Найдено направлений в ' + data.matched_queries + ' из ' + data.total_queries + ' запросов';
+    'Учтено запросов, где клиент указал страну: ' + data.matched_queries;
   document.getElementById('analyticsChart').innerHTML = items.length
     ? items.map(function (r) {
         const pct = Math.round((r.count / max) * 100);

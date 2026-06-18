@@ -177,6 +177,25 @@ def _extract_destination_hint(text: str) -> str | None:
     return None
 
 
+def destination_from_message(
+    user_input: str, collected_destination: str | None = None
+) -> str | None:
+    """
+    Направление только если страна явно указана в тексте реплики.
+    Не подтягивает destination из накопленного состояния сессии (бюджет, даты и т.д.).
+    """
+    text = (user_input or "").strip()
+    if not text:
+        return None
+    hint = _extract_destination_hint(text)
+    if hint:
+        return hint
+    dest = (collected_destination or "").strip()
+    if dest and dest.lower() in text.lower():
+        return dest
+    return None
+
+
 def apply_message_hints(user_message: str, collected: dict) -> dict:
     """
     Добавляет в collected данные, которые модель часто пропускает:
