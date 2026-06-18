@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Панель менеджера — Бон Вояж</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Inter, system-ui, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; }
+    .top { background: linear-gradient(135deg, #01773a, #028a46); color: #fff; padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+    .top h1 { margin: 0; font-size: 1.25rem; }
+    .top .user { font-size: 0.9rem; opacity: 0.95; }
+    .top button { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+    .top button:hover { background: rgba(255,255,255,0.3); }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 40px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .tabs button { padding: 10px 16px; border: 1px solid #c5dcc9; background: #fff; border-radius: 20px; cursor: pointer; font-size: 0.9rem; }
+    .tabs button.active { background: #01773a; color: #fff; border-color: #01773a; }
+    .stats { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .card { background: #fff; border-radius: 14px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,.05); min-width: 130px; }
+    .card b { display: block; font-size: 1.5rem; color: #01773a; }
+    .card span { font-size: 0.8rem; color: #64748b; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #eef2f6; font-size: 0.88rem; text-align: left; vertical-align: top; }
+    th { background: #f0fdf4; color: #01773a; position: sticky; top: 0; }
+  .tbl-wrap { max-height: 480px; overflow: auto; border-radius: 12px; }
+    .form-box { background: #fff; padding: 20px; border-radius: 14px; max-width: 420px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+    .form-box label { display: block; font-size: 0.85rem; color: #475569; margin: 12px 0 6px; }
+    .form-box input, .form-box select { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; }
+    .form-box button { margin-top: 16px; padding: 10px 20px; background: #01773a; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    .msg { font-size: 0.9rem; margin-top: 10px; }
+    .msg.ok { color: #01773a; }
+    .msg.err { color: #b91c1c; }
+    .live-dot { display: inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; margin-right: 6px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+    .params { font-size: 0.78rem; color: #64748b; max-width: 220px; word-break: break-word; }
+    a { color: #01773a; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>Панель менеджера «Бон Вояж»</h1>
+    <div>
+      <span class="user" id="userInfo"></span>
+      <button type="button" onclick="logout()">Выйти</button>
+      <a href="/" style="color:#fff;margin-left:12px;font-size:.9rem">На сайт</a>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="stats" id="statsRow"></div>
+
+    <nav class="tabs">
+      <button type="button" class="active" data-tab="queries">Запросы <span class="live-dot"></span></button>
+      <button type="button" data-tab="leads">Заявки</button>
+      <button type="button" data-tab="tours">Турпакеты</button>
+      <button type="button" data-tab="managers" id="tabManagers" style="display:none">Менеджеры</button>
+      <button type="button" data-tab="profile">Мой профиль</button>
+    </nav>
+
+    <section class="panel active" id="panel-queries">
+      <p style="color:#64748b;font-size:.9rem"><span class="live-dot"></span>Обновление каждые 3 секунды</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Время</th><th>Сессия</th><th>Сообщение</th><th>Параметры</th></tr></thead>
+          <tbody id="queriesBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-leads">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Дата</th><th>Имя</th><th>Телефон</th><th>Тур</th><th>Сообщение</th></tr></thead>
+          <tbody id="leadsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-tours">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Дата</th><th>Сумма</th><th>Запрос клиента</th></tr></thead>
+          <tbody id="toursBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-managers">
+      <div class="form-box" style="margin-bottom:24px">
+        <h3 style="margin:0 0 8px;color:#01773a">Новый менеджер</h3>
+        <label>Логин</label>
+        <input id="newLogin" type="text" minlength="3">
+        <label>Пароль</label>
+        <input id="newPass" type="password" minlength="4">
+        <label>Роль</label>
+        <select id="newRole"><option value="manager">Менеджер</option><option value="admin">Администратор</option></select>
+        <button type="button" onclick="createManager()">Создать</button>
+        <p class="msg" id="newMgrMsg"></p>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Логин</th><th>Роль</th><th>Создан</th></tr></thead>
+          <tbody id="managersBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-profile">
+      <div class="form-box">
+        <h3 style="margin:0 0 8px;color:#01773a">Сменить логин и пароль</h3>
+        <label>Новый логин</label>
+        <input id="profLogin" type="text">
+        <label>Текущий пароль *</label>
+        <input id="profCur" type="password" required>
+        <label>Новый пароль (оставьте пустым, если не меняете)</label>
+        <input id="profNew" type="password">
+        <button type="button" onclick="saveProfile()">Сохранить</button>
+        <p class="msg" id="profMsg"></p>
+      </div>
+    </section>
+  </div>
+
+<script>
+let me = null;
+let lastQueryId = 0;
+let queriesPoll = null;
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fmtParams(p) {
+  if (!p || typeof p !== 'object') return '—';
+  const parts = [];
+  if (p.destination) parts.push('📍 ' + p.destination);
+  if (p.date_from) parts.push(p.date_from + (p.date_to ? ' — ' + p.date_to : ''));
+  if (p.budget != null) parts.push('💰 ' + p.budget);
+  if (p.name) parts.push('👤 ' + p.name);
+  return parts.join('<br>') || JSON.stringify(p).slice(0, 80);
+}
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (r.status === 401) { location.reload(); throw new Error('auth'); }
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    throw new Error(d.detail || 'Ошибка');
+  }
+  return r.json();
+}
+
+async function init() {
+  me = await api('/admin/api/me');
+  document.getElementById('userInfo').textContent = me.username + ' (' + me.role + ')';
+  document.getElementById('profLogin').value = me.username;
+  if (me.role === 'admin') {
+    document.getElementById('tabManagers').style.display = '';
+    loadManagers();
+  }
+  loadStats();
+  loadLeads();
+  loadTours();
+  loadQueriesInitial();
+  queriesPoll = setInterval(pollQueries, 3000);
+  setInterval(loadStats, 15000);
+}
+
+async function loadStats() {
+  const d = await api('/admin/api/dashboard');
+  document.getElementById('statsRow').innerHTML =
+    '<div class="card"><b>' + d.today_requests + '</b><span>запросов сегодня</span></div>' +
+    '<div class="card"><b>' + d.today_tours + '</b><span>турпакетов</span></div>' +
+    '<div class="card"><b>' + d.leads_today + '</b><span>заявок сегодня</span></div>';
+}
+
+async function loadLeads() {
+  const rows = await api('/admin/api/leads');
+  document.getElementById('leadsBody').innerHTML = rows.length ? rows.map(r =>
+    '<tr><td>' + r.id + '</td><td>' + esc(r.created_at) + '</td><td>' + esc(r.name) +
+    '</td><td>' + esc(r.phone) + '</td><td>' + esc(r.tour_name) + '</td><td>' + esc(r.message) + '</td></tr>'
+  ).join('') : '<tr><td colspan="6">Заявок нет</td></tr>';
+}
+
+async function loadTours() {
+  const rows = await api('/admin/api/tours');
+  document.getElementById('toursBody').innerHTML = rows.length ? rows.map(r =>
+    '<tr><td>' + r.id + '</td><td>' + esc(r.created_at) + '</td><td>' + esc(r.total_price) + ' ₽</td><td>' +
+    esc((r.user_input || '').slice(0, 100)) + '</td></tr>'
+  ).join('') : '<tr><td colspan="4">Пакетов нет</td></tr>';
+}
+
+function appendQueryRows(rows, prepend) {
+  const tbody = document.getElementById('queriesBody');
+  const html = rows.map(r => {
+    if (r.id > lastQueryId) lastQueryId = r.id;
+    return '<tr><td>' + r.id + '</td><td>' + esc(r.created_at) + '</td><td>' + esc((r.session_id||'').slice(0,12)) +
+      '…</td><td>' + esc(r.user_input) + '</td><td class="params">' + fmtParams(r.extracted_params) + '</td></tr>';
+  }).join('');
+  if (prepend && html) tbody.insertAdjacentHTML('afterbegin', html);
+  else if (!prepend) tbody.innerHTML = html || '<tr><td colspan="5">Запросов пока нет</td></tr>';
+}
+
+async function loadQueriesInitial() {
+  const rows = await api('/admin/api/queries?limit=80');
+  lastQueryId = rows.length ? Math.max(...rows.map(r => r.id)) : 0;
+  appendQueryRows(rows, false);
+}
+
+async function pollQueries() {
+  if (lastQueryId <= 0) return;
+  const rows = await api('/admin/api/queries?since_id=' + lastQueryId + '&limit=50');
+  if (rows.length) appendQueryRows(rows, true);
+}
+
+async function loadManagers() {
+  const rows = await api('/admin/api/managers');
+  document.getElementById('managersBody').innerHTML = rows.map(r =>
+    '<tr><td>' + r.id + '</td><td>' + esc(r.username) + '</td><td>' + esc(r.role) +
+    '</td><td>' + esc(r.created_at) + '</td></tr>'
+  ).join('');
+}
+
+async function createManager() {
+  const msg = document.getElementById('newMgrMsg');
+  msg.className = 'msg';
+  try {
+    await api('/admin/api/managers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('newLogin').value,
+        password: document.getElementById('newPass').value,
+        role: document.getElementById('newRole').value
+      })
+    });
+    msg.textContent = 'Менеджер создан';
+    msg.className = 'msg ok';
+    document.getElementById('newLogin').value = '';
+    document.getElementById('newPass').value = '';
+    loadManagers();
+  } catch (e) {
+    msg.textContent = e.message;
+    msg.className = 'msg err';
+  }
+}
+
+async function saveProfile() {
+  const msg = document.getElementById('profMsg');
+  msg.className = 'msg';
+  try {
+    const body = {
+      username: document.getElementById('profLogin').value,
+      current_password: document.getElementById('profCur').value,
+      new_password: document.getElementById('profNew').value || null
+    };
+    const r = await api('/admin/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    msg.textContent = 'Сохранено. Логин: ' + r.username;
+    msg.className = 'msg ok';
+    document.getElementById('profCur').value = '';
+    document.getElementById('profNew').value = '';
+    me.username = r.username;
+    document.getElementById('userInfo').textContent = me.username + ' (' + me.role + ')';
+  } catch (e) {
+    msg.textContent = e.message;
+    msg.className = 'msg err';
+  }
+}
+
+async function logout() {
+  await fetch('/admin/logout', { method: 'POST' });
+  location.reload();
+}
+
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.onclick = function() {
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  };
+});
+
+init().catch(() => location.reload());
+</script>
+</body>
+</html>

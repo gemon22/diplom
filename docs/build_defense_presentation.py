@@ -1,5 +1,5 @@
 """
-Презентация для защиты диплома — только текст, без картинок.
+Презентация для защиты диплома.
 Запуск:  python docs/build_defense_presentation.py
 """
 from __future__ import annotations
@@ -10,273 +10,172 @@ from xml.sax.saxutils import escape
 
 DOCS = Path(__file__).resolve().parent
 OUT = DOCS / "Диплом_защита_презентация.pptx"
+DB_SCHEMA = DOCS / "db_schema.png"
 
 G, G2, T = "01773A", "028A46", "0D9488"
 DK, GR, LT, BD, WH = "1E293B", "64748B", "F0FDF4", "BBF7D0", "FFFFFF"
 
-# body  — основные пункты слева
-# detail — подробный текст справа (то, что раньше было на картинках)
 SLIDES = [
     {
         "kind": "title",
-        "title": "Модуль динамической генерации турпакета\nна основе методов искусственного интеллекта",
+        "title": "Проектирование и разработка системы\nдинамической сборки турпакетов\nна основе методов искусственного интеллекта",
         "body": [
-            "Студент: ФИО",
-            "Группа: ______",
-            "Специальность: 09.02.07 Информационные системы и программирование",
-            "Руководитель: ФИО",
-            "ГБПОУ «Амурский технический колледж» · 2026",
+            "Студент: Ю.В. Тымченко",
+            "Специальность: 09.02.07 — Информатика, программирование и эксплуатация БАС",
+            "База практики: ООО «Бон Вояж»",
+            "Руководитель: Д.П. Бардин",
+            "ГБПОУ «Благовещенский политехнический колледж» · 2026",
         ],
-        "notes": "Здравствуйте. Представляю дипломный проект — модуль AI-подбора туров для «Бон Вояж» / «Планета 360».",
+        "notes": "Здравствуйте, уважаемые члены комиссии. Представляю ВКР — систему «AI Тур-Генератор» для ООО «Бон Вояж» (сайт Планета 360 / bon-voyage28.ru).",
     },
     {
         "title": "Актуальность темы",
         "body": [
-            "Клиенты турфирм ожидают быстрый онлайн-подбор",
-            "Свободный текст удобнее форм и фильтров",
-            "LLM понимают запрос на русском языке",
-            "Автоматизация работает 24/7 без выходных",
+            "Рост спроса на персонализированные туры",
+            "Клиенты тратят часы на поиск на сайтах операторов",
+            "Менеджеры обрабатывают однотипные запросы вручную",
+            "LLM автоматизируют извлечение параметров из текста",
+            "Модуль работает на сайте 24/7 без выходных",
         ],
-        "detail": [
-            "ПРОБЛЕМА",
-            "Менеджер не всегда может ответить сразу — клиент уходит к конкурентам.",
-            "",
-            "РЕШЕНИЕ",
-            "Модуль принимает запрос в свободной форме:",
-            "«Хочу в Китай с 10 по 20 июля, бюджет 80 000 руб.»",
-            "",
-            "ВЫГОДА",
-            "Снижение нагрузки на сотрудников, рост числа заявок.",
-        ],
-        "notes": "Почему тема важна для турфирмы в Благовещенске.",
+        "notes": "Классический подбор тура медленный. ИИ позволяет принять запрос в свободной форме и быстро сформировать турпакет из каталога турфирмы.",
     },
     {
-        "title": "Цель и задачи проекта",
+        "title": "Цель и задачи",
         "body": [
-            "Цель: разработать модуль генерации турпакета на основе ИИ",
-            "Изучить применение LLM в туризме",
-            "Спроектировать архитектуру, БД и AI-агента",
-            "Реализовать интерфейс, сервер и парсер",
-            "Интегрировать DeepSeek и GigaChat",
-            "Провести тестирование и экономическое обоснование",
+            "Цель: разработать и внедрить систему генерации турпакета на основе ИИ",
+            "Анализ деятельности туроператора и процесса подбора туров",
+            "Сравнительный анализ аналогов и выбор технологий",
+            "Проектирование архитектуры модуля и структуры БД",
+            "Реализация парсера, бэкенда FastAPI и фронтенда Vue.js",
+            "Интеграция LLM, тестирование и экономическое обоснование",
         ],
         "numbered": True,
-        "notes": "Цель — одним предложением, задачи по заданию.",
+        "notes": "Цель — одним предложением. Задачи — по введению диплома.",
+    },
+    {
+        "title": "Сравнение аналогов",
+        "body": [
+            "Travelpayouts, Tutu.ru, Яндекс.Путешествия — только формы",
+            "CRM (1С: Турагентство) — учёт, но без ИИ и диалога",
+            "Готовые чат-боты — чужой каталог, нет привязки к «Бон Вояж»",
+            "Ни один аналог не сочетает все три функции сразу",
+        ],
+        "detail": [
+            "КРИТЕРИИ СРАВНЕНИЯ",
+            "· Ввод запроса (форма / свободный текст)",
+            "· Диалог для уточнения параметров",
+            "· Работа с каталогом конкретной турфирмы",
+            "",
+            "ПОИСКОВИКИ",
+            "· Большая база, актуальные цены",
+            "· Нет NLP и диалога",
+            "",
+            "НАШ МОДУЛЬ",
+            "· NLP + диалог + свой каталог",
+            "· Интеграция в bon-voyage28.ru",
+        ],
+        "notes": "Обоснование собственной разработки: нужны естественный язык, уточняющие вопросы и данные именно «Бон Вояж».",
     },
     {
         "title": "Объект и предмет исследования",
         "body": [
-            "Объект: процесс подбора турпакета в турфирме",
-            "Предмет: методы применения ИИ для генерации турпакета",
-            "База практики: ООО «Бон Вояж», bon-voyage28.ru",
-            "Результат: модуль для сайта «Планета 360»",
+            "Объект: процесс подбора туристических пакетов в деятельности туроператора",
+            "Предмет: методы сбора данных и обработки с LLM для генерации турпакетов",
+            "Практическая база: ООО «Бон Вояж», г. Благовещенск",
+            "Результат: модуль «AI Тур-Генератор» для сайта Планета 360",
         ],
-        "notes": "Классический слайд защиты.",
+        "notes": "Объект — процесс, предмет — методы и алгоритмы с применением больших языковых моделей.",
     },
     {
         "title": "Средства разработки",
         "body": [
-            "Python 3.11 — основной язык",
-            "FastAPI + Uvicorn — сервер",
-            "Vue.js — клиентский интерфейс",
-            "MySQL 8.0 — база данных",
-            "DeepSeek API, GigaChat — LLM",
-            "BeautifulSoup — парсер каталога",
+            "Python 3.11, FastAPI, Uvicorn — серверная часть",
+            "Vue.js 3 — клиентский интерфейс (чат)",
+            "MySQL 8.0 — хранение каталога и сессий",
+            "DeepSeek API + GigaChat — языковые модели",
+            "BeautifulSoup + requests — парсинг bon-voyage28.ru",
+            "Travelpayouts / Amadeus — данные о перелётах",
         ],
-        "detail": [
-            "СТЕК ТЕХНОЛОГИЙ",
-            "Backend:  app.py, ai_service.py, config.py",
-            "Frontend: frontend/index.html (Vue SPA)",
-            "Парсер:   parser.py → таблица hotels",
-            "Конфиг:   .env + requirements.txt",
-            "Запуск:   python run_server.py",
-            "Адрес:    http://localhost:8000",
-        ],
-        "notes": "Назовите стек и основные файлы проекта.",
-    },
-    {
-        "title": "Архитектура системы",
-        "body": [
-            "Клиент-серверная архитектура",
-            "Три уровня: клиент → сервер → данные",
-            "Два провайдера ИИ с fallback",
-        ],
-        "detail": [
-            "КЛИЕНТ (Vue.js)",
-            "· Чат-интерфейс, выбор LLM",
-            "· Карточка готового турпакета",
-            "· Форма заявки менеджеру",
-            "",
-            "СЕРВЕР (FastAPI)",
-            "· POST /api/chat — основной эндпоинт",
-            "· ai_service.py — логика AI-агента",
-            "· date_validation.py — проверка дат",
-            "",
-            "ДАННЫЕ",
-            "· MySQL — каталог, сессии, заявки",
-            "· GigaChat / DeepSeek — нейросети",
-            "",
-            "ПОТОК",
-            "Запрос → LLM → параметры → БД → турпакет → ответ",
-        ],
-        "notes": "Опишите поток данных словами.",
-    },
-    {
-        "title": "Бизнес-процесс (IDEF0)",
-        "body": [
-            "Деятельность турфирмы «Бон Вояж»",
-            "5 этапов: A1 → A2 → A3 → A4 → A5",
-            "Модуль автоматизирует этап A1",
-        ],
-        "detail": [
-            "A1 — Планирование поездки",
-            "   Первичный подбор направления и тура",
-            "   ← МОДУЛЬ АВТОМАТИЗИРУЕТ ЭТОТ ЭТАП",
-            "",
-            "A2 — Формирование группы",
-            "A3 — Организация логистики",
-            "A4 — Сопровождение туристов",
-            "A5 — Отчётность и анализ",
-            "",
-            "Вход: запрос клиента на сайте",
-            "Выход: готовый турпакет + заявка",
-        ],
-        "notes": "Связь с бизнес-процессом организации.",
+        "notes": "Клиент-серверная архитектура. Связка двух LLM даёт отказоустойчивость и соответствие 152-ФЗ (GigaChat).",
     },
     {
         "title": "База данных MySQL",
+        "image": DB_SCHEMA,
         "body": [
-            "6 таблиц в единой схеме",
-            "Каталог, сессии, история, заявки",
-            "Состояние диалога хранится в JSON",
+            "7 таблиц: hotels, flights, user_sessions, user_queries, generated_tours, agency_leads, daily_stats",
         ],
-        "detail": [
-            "hotels",
-            "  Каталог туров (парсер bon-voyage28.ru)",
-            "  name, country, price, dates",
-            "",
-            "user_sessions",
-            "  session_id, state (JSON), updated_at",
-            "",
-            "user_queries / generated_tours",
-            "  История сообщений и турпакетов",
-            "",
-            "agency_leads / daily_stats",
-            "  Заявки клиентов и статистика",
-        ],
-        "notes": "Таблицы из database.py.",
+        "notes": "ER-диаграмма из диплома. hotels — каталог туров (парсер), user_sessions — состояние диалога в JSON, generated_tours — готовые турпакеты.",
     },
     {
-        "title": "Алгоритм AI-агента",
+        "title": "Интерфейс (фронтенд)",
         "body": [
-            "Двухфазный алгоритм",
-            "Серверная валидация параметров",
-            "Отказоустойчивость при сбое LLM",
+            "Одностраничное приложение на Vue.js (frontend/index.html)",
+            "Чат: свободный ввод запроса на русском языке",
+            "Выбор нейросети: Auto / GigaChat / DeepSeek",
+            "Карточка тура: отель, перелёт, цена, рекомендация",
+            "Кнопки «Купить самостоятельно» и «Обратиться в турфирму»",
+            "Форма заявки: имя, телефон, email → менеджеру",
         ],
-        "detail": [
-            "1. Старт — POST /api/chat",
-            "2. Фаза 1 — диалог LLM:",
-            "   сбор направления, дат, бюджета",
-            "3. Валидация — date_validation.py",
-            "4. Поиск — SELECT из таблицы hotels",
-            "5. Фаза 2 — LLM формирует турпакет",
-            "6. Fallback — GigaChat → DeepSeek",
-            "7. Ответ — карточка тура в чате",
-            "",
-            "Режим auto: сначала GigaChat,",
-            "при ошибке — автоматически DeepSeek",
-        ],
-        "notes": "Ключевой слайд. Можно показать демо.",
+        "notes": "Можно показать демо: http://localhost:8000. Пример запроса: «Хочу в Китай с 10 по 20 июля, бюджет 80 000 руб.»",
     },
     {
-        "title": "Клиентский интерфейс",
+        "title": "Серверная часть (бэкенд)",
         "body": [
-            "Веб-чат на Vue.js",
-            "Свободный ввод на русском языке",
-            "Карточка тура и форма заявки",
+            "FastAPI — центральный компонент (backend/app.py)",
+            "POST /api/chat — приём сообщений и генерация тура",
+            "ai_service.py — диалог LLM и сбор параметров",
+            "database.py — SQL-запросы к MySQL",
+            "date_validation.py, dialog_hints.py — серверная валидация",
+            "Fallback: GigaChat → DeepSeek при сбое провайдера",
         ],
         "detail": [
-            "ШАПКА САЙТА",
-            "· Логотип «Планета 360»",
-            "· Навигация, телефон турфирмы",
+            "АЛГОРИТМ /api/chat",
+            "1. Создание/загрузка сессии",
+            "2. LLM извлекает направление, даты, бюджет",
+            "3. Поиск тура в таблице hotels",
+            "4. LLM формирует турпакет + перелёт",
+            "5. Ответ клиенту в JSON",
             "",
-            "МОДУЛЬ «AI Тур-Генератор»",
-            "· Выбор нейросети: Auto / GigaChat / DeepSeek",
-            "· Поле ввода: «Хочу в Китай…»",
-            "· Кнопки: Отправить, Сброс",
-            "",
-            "КАРТОЧКА ТУРА",
-            "· Отель, перелёт, даты, цена",
-            "· Кнопки: «Купить» / «Страница турфирмы»",
-            "",
-            "ЗАЯВКА: имя, телефон, email → менеджеру",
+            "Дополнительно:",
+            "· POST /api/reset — сброс диалога",
+            "· POST /api/lead — заявка менеджеру",
+            "· GET /admin/stats — статистика",
         ],
-        "notes": "Демо: http://localhost:8000",
-    },
-    {
-        "title": "Тестирование",
-        "body": [
-            "Модульное, интеграционное, функциональное",
-            "Все сценарии пройдены успешно",
-        ],
-        "detail": [
-            "МОДУЛЬНОЕ",
-            "· test_dates.py — валидация дат поездки",
-            "",
-            "ИНТЕГРАЦИОННОЕ",
-            "· test_deepseek.py — API DeepSeek",
-            "· test_gigachat.py — API GigaChat",
-            "",
-            "ФУНКЦИОНАЛЬНОЕ",
-            "· Полный диалог → турпакет",
-            "· Fallback при сбое GigaChat",
-            "· Сброс сессии (POST /api/reset)",
-            "· Сохранение заявки в agency_leads",
-        ],
-        "notes": "Результаты в главе 3.4.",
+        "notes": "Асинхронная обработка: сервер не блокируется на время ответа нейросети (2–10 сек).",
     },
     {
         "title": "Экономическое обоснование",
         "body": [
-            "Затраты на разработку: 107 720 руб.",
+            "Затраты на разработку: 107 200 руб.",
             "Эксплуатация: 47 100 руб./год",
-            "Чистый эффект: 711 300 руб./год",
+            "Эффект от внедрения: 664 200 руб./год",
+            "Окупаемость: 3–4 месяца",
         ],
         "detail": [
-            "ЗАТРАТЫ НА РАЗРАБОТКУ",
-            "· 200 ч × 500 руб./ч = 100 000 руб.",
-            "· Материалы и хостинг = 7 720 руб.",
-            "· Итого: 107 720 руб.",
+            "РАЗРАБОТКА",
+            "· 200 ч × 500 руб. = 100 000 руб.",
+            "· Материалы = 7 720 руб.",
             "",
-            "ЭФФЕКТ В ГОД",
-            "· Экономия времени менеджеров",
-            "· Дополнительные заявки с сайта",
-            "· Чистый эффект: 711 300 руб./год",
+            "АЛЬТЕРНАТИВЫ",
+            "· Доп. менеджер ≈ 420 000 руб./год",
+            "· Готовый чат-бот ≈ 50–120 тыс./год",
             "",
-            "Окупаемость: ~2 месяца",
-            "Коэффициент эффективности Kэф = 6,6",
+            "ВЫВОД",
+            "Собственный модуль дешевле",
+            "и использует каталог «Бон Вояж»",
         ],
-        "notes": "Цифры из главы 5.",
+        "notes": "Цифры из главы 5 диплома. При ~20 обращениях в день модуль окупается за 3–4 месяца.",
     },
     {
-        "title": "Результаты работы",
+        "title": "Заключение",
         "body": [
-            "Разработан модуль «AI Тур-Генератор»",
-            "Диалог на русском, реальный каталог",
-            "Двухпровайдерная схема ИИ",
-            "Готов к внедрению на bon-voyage28.ru",
+            "Разработан модуль «AI Тур-Генератор» для ООО «Бон Вояж»",
+            "Реализованы диалог на русском, парсер каталога, двухфазный AI-агент",
+            "Двухпровайдерная схема GigaChat + DeepSeek",
+            "Цель достигнута, все задачи выполнены",
+            "Модуль готов к внедрению на bon-voyage28.ru",
         ],
-        "notes": "Работающий прототип.",
-    },
-    {
-        "title": "Выводы",
-        "body": [
-            "Цель дипломного проекта достигнута",
-            "Все задачи выполнены в полном объёме",
-            "Модуль снижает нагрузку на менеджеров",
-            "Экономическая эффективность подтверждена",
-        ],
-        "notes": "30 секунд. Уверенный финал.",
+        "notes": "Практическая значимость: снижение нагрузки на менеджеров, круглосуточный приём заявок, ускорение подбора тура.",
     },
     {
         "kind": "end",
@@ -284,9 +183,9 @@ SLIDES = [
         "body": [
             "Готов ответить на ваши вопросы",
             "Демонстрация: http://localhost:8000",
-            "Турфирма «Бон Вояж»: +7 (4162) 317-771",
+            "ООО «Бон Вояж»: +7 (4162) 317-771",
         ],
-        "notes": "Вопросы комиссии.",
+        "notes": "Спасибо. Готов ответить на вопросы и показать работу модуля.",
     },
 ]
 
@@ -384,6 +283,14 @@ def _text(sid, name, x, y, cx, cy, xml, anchor="t"):
 <a:lstStyle/>{xml}</p:txBody></p:sp>"""
 
 
+def _picture(sid, name, x, y, cx, cy, embed: str):
+    return f"""<p:pic>
+<p:nvPicPr><p:cNvPr id="{sid}" name="{name}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
+<p:blipFill><a:blip r:embed="{embed}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+<p:spPr><a:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>
+<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>"""
+
+
 def _grad_bg():
     return (
         f"<p:bg><p:bgPr><a:gradFill rotWithShape=\"1\"><a:gsLst>"
@@ -399,7 +306,7 @@ def _white_bg():
     return f"<p:bg><p:bgPr><a:solidFill><a:srgbClr val=\"{WH}\"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>"
 
 
-def _decor(num: int, kind: str | None, two_col: bool) -> str:
+def _decor(num: int, kind: str | None, layout: str) -> str:
     if kind in ("title", "end"):
         return "\n".join([
             _ellipse(10, "c1", 9200000, -200000, 3200000, 3200000, WH, 10000),
@@ -423,11 +330,16 @@ def _decor(num: int, kind: str | None, two_col: bool) -> str:
         _text(20, "ftrR", 9200000, 6390000, 2400000, 260000,
               _para(f"{num} / {len(SLIDES)}", 1200, True, WH, "r"), "ctr"),
     ]
-    if two_col:
+    if layout == "two_col":
         parts += [
             _rect(15, "leftC", 480000, 1120000, 4800000, 5000000, LT, r=8000),
             _rect(16, "rightC", 5400000, 1120000, 6200000, 5000000, WH, r=8000),
             _rect(21, "rightB", 5400000, 1120000, 6200000, 5000000, line=BD, r=8000),
+        ]
+    elif layout == "image":
+        parts += [
+            _rect(15, "imgBg", 360000, 1080000, 11400000, 5150000, WH, r=8000),
+            _rect(16, "imgBd", 360000, 1080000, 11400000, 5150000, line=BD, r=8000),
         ]
     else:
         parts += [
@@ -437,10 +349,18 @@ def _decor(num: int, kind: str | None, two_col: bool) -> str:
     return "\n".join(parts)
 
 
-def _slide_xml(sl: dict, num: int) -> str:
+def _slide_xml(sl: dict, num: int, image_rid: str | None = None) -> str:
     kind = sl.get("kind")
     special = kind in ("title", "end")
-    two_col = bool(sl.get("detail")) and not special
+    has_image = bool(sl.get("image")) and image_rid
+    two_col = bool(sl.get("detail")) and not special and not has_image
+
+    if has_image:
+        layout = "image"
+    elif two_col:
+        layout = "two_col"
+    else:
+        layout = "single"
 
     t_color = WH if special else G
     b_color = WH if special else DK
@@ -451,13 +371,18 @@ def _slide_xml(sl: dict, num: int) -> str:
     body_xml = _body_xml(sl, b_sz, b_color)
 
     bg = _grad_bg() if special else _white_bg()
-    decor = _decor(num, kind, two_col)
-
+    decor = _decor(num, kind, layout)
     shapes = [decor]
 
     if special:
         shapes.append(_text(2, "Title", 700000, 1850000, 10800000, 2200000, title_xml, "ctr"))
         shapes.append(_text(3, "Body", 1200000, 4200000, 9800000, 1900000, body_xml, "ctr"))
+    elif has_image:
+        shapes.append(_text(2, "Title", 560000, 1040000, 10500000, 380000, title_xml))
+        shapes.append(_picture(22, "ER Diagram", 420000, 1180000, 11300000, 4900000, image_rid))
+        if sl.get("body"):
+            shapes.append(_text(3, "Caption", 560000, 6100000, 11000000, 200000,
+                                _para(sl["body"][0], 1300, color=GR, align="ctr"), "ctr"))
     elif two_col:
         shapes.append(_text(2, "Title", 560000, 1040000, 10500000, 380000, title_xml))
         shapes.append(_text(3, "Body", 600000, 1200000, 4600000, 4800000, body_xml))
@@ -505,6 +430,7 @@ def build(path: Path) -> None:
         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
         '<Default Extension="xml" ContentType="application/xml"/>',
+        '<Default Extension="png" ContentType="image/png"/>',
         '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>',
         '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>',
         '<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>',
@@ -555,7 +481,20 @@ def build(path: Path) -> None:
                 '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>',
                 f'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide{i}.xml"/>',
             ]
-            z.writestr(f"ppt/slides/slide{i}.xml", _slide_xml(sl, i))
+            image_rid = None
+            img_path = sl.get("image")
+            if img_path:
+                img_path = Path(img_path)
+                if not img_path.exists():
+                    raise FileNotFoundError(f"Изображение не найдено: {img_path}")
+                media_name = f"image{i}.png"
+                z.writestr(f"ppt/media/{media_name}", img_path.read_bytes())
+                rels.append(
+                    f'<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/{media_name}"/>'
+                )
+                image_rid = "rId3"
+
+            z.writestr(f"ppt/slides/slide{i}.xml", _slide_xml(sl, i, image_rid))
             z.writestr(f"ppt/slides/_rels/slide{i}.xml.rels", f'<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{chr(10).join(rels)}</Relationships>')
             z.writestr(f"ppt/notesSlides/notesSlide{i}.xml", _notes(sl.get("notes", "")))
             z.writestr(f"ppt/notesSlides/_rels/notesSlide{i}.xml.rels", f'<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster" Target="../notesMasters/notesMaster1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="../slides/slide{i}.xml"/></Relationships>')
@@ -565,12 +504,19 @@ def build(path: Path) -> None:
 
 
 def main():
+    if not DB_SCHEMA.exists():
+        import draw_db_schema
+        draw_db_schema.main()
+
     build(OUT)
     copy = DOCS / "Diploma_Defense.pptx"
     copy.write_bytes(OUT.read_bytes())
+    downloads = Path.home() / "Downloads" / "Тымченко_защита_презентация.pptx"
+    downloads.write_bytes(OUT.read_bytes())
     print(f"Готово: {OUT}")
     print(f"Копия:  {copy}")
-    print(f"Слайдов: {len(SLIDES)} (только текст, без картинок)")
+    print(f"Копия:  {downloads}")
+    print(f"Слайдов: {len(SLIDES)}")
 
 
 if __name__ == "__main__":

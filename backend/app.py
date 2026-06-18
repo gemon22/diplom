@@ -21,6 +21,7 @@ from demo_mode import (
     mark_demo_tour,
     seed_demo_data,
 )
+from admin_routes import router as admin_router
 from flight_seed import fetch_flights_from_db, seed_catalog_flights
 from tour_links import fix_stale_urls_in_db
 from tour_assembler import assemble_package, attach_db_flight, format_package_html
@@ -42,6 +43,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(admin_router)
 
 sessions = {}
 
@@ -187,18 +190,6 @@ async def training_stats_api():
     }
 
 
-@app.get("/admin/stats")
-async def stats():
-    db = get_db()
-    today = db.get_today_stats()
-    return {
-        "today_requests": today["requests_count"],
-        "today_tours": today["tours_generated"],
-        "active_sessions": len(sessions),
-        "timestamp": datetime.now().isoformat(),
-    }
-
-
 @app.post("/api/reset")
 async def reset_session(session_id: str):
     sessions.pop(session_id, None)
@@ -293,6 +284,7 @@ async def chat(req: ChatReq):
     ready = bool(ready)
     sessions[sid] = new_state
     db.save_session(sid, new_state)
+    db.update_query_params(qid, new_state.get("collected"))
 
     tour = None
     if ready:
@@ -433,84 +425,6 @@ async def chat(req: ChatReq):
         llm_fallback=bool(meta.get("llm_fallback")),
         llm_tried=meta.get("llm_tried") or [],
     )
-
-
-@app.get("/admin", response_class=HTMLResponse)
-async def admin_panel():
-    db = get_db()
-    today = db.get_today_stats()
-    leads = db.get_recent_leads(30)
-    tours = db.get_recent_tours(15)
-    leads_today = db.count_leads_today()
-
-    def esc(s):
-        return (
-            str(s or "")
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
-
-    lead_rows = ""
-    for lead in leads:
-        lead_rows += f"""<tr>
-          <td>{lead.get('id')}</td>
-          <td>{esc(lead.get('created_at'))}</td>
-          <td>{esc(lead.get('name'))}</td>
-          <td>{esc(lead.get('phone'))}</td>
-          <td>{esc(lead.get('tour_name'))}</td>
-          <td>{esc(lead.get('message'))}</td>
-        </tr>"""
-
-    tour_rows = ""
-    for t in tours:
-        tour_rows += f"""<tr>
-          <td>{t.get('id')}</td>
-          <td>{esc(t.get('created_at'))}</td>
-          <td>{esc(t.get('total_price'))} ₽</td>
-          <td>{esc((t.get('user_input') or '')[:80])}</td>
-        </tr>"""
-
-    html = f"""<!DOCTYPE html>
-<html lang="ru"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Панель менеджера — Бон Вояж</title>
-<style>
-body{{font-family:Inter,system-ui,sans-serif;background:#f8fafc;color:#1e293b;margin:0;padding:24px}}
-h1{{color:#01773a}} .stats{{display:flex;gap:16px;flex-wrap:wrap;margin:20px 0}}
-.card{{background:#fff;border-radius:16px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.06);min-width:140px}}
-.card b{{font-size:1.6rem;color:#01773a;display:block}}
-table{{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:16px 0}}
-th,td{{padding:10px 12px;border-bottom:1px solid #eef2f6;font-size:0.9rem;text-align:left}}
-th{{background:#f0fdf4;color:#01773a}}
-a{{color:#01773a}}
-</style></head><body>
-<h1>Панель менеджера</h1>
-<p><a href="/">← К подбору тура</a></p>
-<div class="stats">
-  <div class="card"><b>{today.get('requests_count', 0)}</b>запросов сегодня</div>
-  <div class="card"><b>{today.get('tours_generated', 0)}</b>собрано пакетов</div>
-  <div class="card"><b>{leads_today}</b>заявок сегодня</div>
-  <div class="card"><b>{len(sessions)}</b>активных сессий</div>
-</div>
-<h2>Заявки клиентов</h2>
-<table><thead><tr><th>ID</th><th>Дата</th><th>Имя</th><th>Телефон</th><th>Тур</th><th>Сообщение</th></tr></thead>
-<tbody>{lead_rows or '<tr><td colspan="6">Заявок пока нет</td></tr>'}</tbody></table>
-<h2>Обучение диалога</h2>
-<p id="trainingStats">Загрузка...</p>
-<script>
-fetch('/api/training/stats').then(r=>r.json()).then(d=>{{
-  document.getElementById('trainingStats').innerHTML =
-    'Примеров: <b>'+d.total_examples+'</b>, ready: <b>'+d.ready_examples+
-    '</b>, точность правил: <b>'+d.validation_avg_pct+'%</b>. '+
-    '<a href="/api/training/stats">JSON</a>';
-}}).catch(()=>{{}});
-</script>
-<h2>Собранные турпакеты</h2>
-<table><thead><tr><th>ID</th><th>Дата</th><th>Сумма</th><th>Запрос</th></tr></thead>
-<tbody>{tour_rows or '<tr><td colspan="4">Пакетов пока нет</td></tr>'}</tbody></table>
-</body></html>"""
-    return HTMLResponse(html)
 
 
 if __name__ == "__main__":

@@ -77,7 +77,10 @@ class Config:
         "yes",
     )
 
-    # Сайты для парсинга
+    # Панель менеджера
+    ADMIN_SECRET_KEY = (os.getenv("ADMIN_SECRET_KEY") or "bon-voyage-admin-change-me").strip()
+    ADMIN_DEFAULT_LOGIN = (os.getenv("ADMIN_DEFAULT_LOGIN") or "admin").strip()
+    ADMIN_DEFAULT_PASSWORD = (os.getenv("ADMIN_DEFAULT_PASSWORD") or "bonvoyage").strip()
     SITE_PRIMARY_URL = os.getenv("SITE_PRIMARY_URL", "https://bon-voyage28.ru/")
     SITE_SECONDARY_URL = os.getenv("SITE_SECONDARY_URL", "https://bonvoyage28.ru/")
 

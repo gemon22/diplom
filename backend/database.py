@@ -165,9 +165,24 @@ class Database:
         """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS managers (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(64) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                role VARCHAR(20) NOT NULL DEFAULT 'manager',
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_managers_username (username)
+            )
+        """
+        )
+
         self.connection.commit()
         cursor.close()
         logger.info("Tables ready")
+        self.ensure_default_manager()
 
     def clear_hotels(self):
         cursor = self.connection.cursor()
@@ -370,6 +385,142 @@ class Database:
         self.connection.commit()
         cursor.close()
         return qid
+
+    def update_query_params(self, query_id: int, extracted_params: dict | None):
+        if not query_id or not extracted_params:
+            return
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            UPDATE user_queries SET extracted_params = %s WHERE id = %s
+            """,
+            (json.dumps(extracted_params, ensure_ascii=False), query_id),
+        )
+        self.connection.commit()
+        cursor.close()
+
+    def ensure_default_manager(self):
+        from admin_auth import hash_password
+        from config import Config
+
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT COUNT(*) FROM managers")
+        count = int((cursor.fetchone() or [0])[0])
+        if count == 0:
+            cursor.execute(
+                """
+                INSERT INTO managers (username, password_hash, role)
+                VALUES (%s, %s, 'admin')
+                """,
+                (
+                    Config.ADMIN_DEFAULT_LOGIN,
+                    hash_password(Config.ADMIN_DEFAULT_PASSWORD),
+                ),
+            )
+            self.connection.commit()
+            logger.info("Default manager created: %s", Config.ADMIN_DEFAULT_LOGIN)
+        cursor.close()
+
+    def get_manager_by_username(self, username: str) -> dict | None:
+        cursor = self.connection.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT * FROM managers WHERE username = %s AND is_active = 1",
+            (username,),
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        return row
+
+    def get_manager_by_id(self, manager_id: int) -> dict | None:
+        cursor = self.connection.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT id, username, role, is_active, created_at FROM managers WHERE id = %s",
+            (manager_id,),
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        return row
+
+    def list_managers(self) -> list[dict]:
+        cursor = self.connection.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT id, username, role, is_active, created_at FROM managers ORDER BY id"
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        return rows
+
+    def create_manager(self, username: str, password_hash: str, role: str = "manager") -> int:
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO managers (username, password_hash, role)
+            VALUES (%s, %s, %s)
+            """,
+            (username, password_hash, role),
+        )
+        self.connection.commit()
+        mid = cursor.lastrowid
+        cursor.close()
+        return mid
+
+    def update_manager_credentials(
+        self, manager_id: int, username: str | None = None, password_hash: str | None = None
+    ):
+        cursor = self.connection.cursor()
+        if username and password_hash:
+            cursor.execute(
+                "UPDATE managers SET username = %s, password_hash = %s WHERE id = %s",
+                (username, password_hash, manager_id),
+            )
+        elif username:
+            cursor.execute(
+                "UPDATE managers SET username = %s WHERE id = %s",
+                (username, manager_id),
+            )
+        elif password_hash:
+            cursor.execute(
+                "UPDATE managers SET password_hash = %s WHERE id = %s",
+                (password_hash, manager_id),
+            )
+        self.connection.commit()
+        cursor.close()
+
+    def get_recent_queries(self, limit: int = 100, since_id: int = 0) -> list[dict]:
+        cursor = self.connection.cursor(dictionary=True)
+        if since_id > 0:
+            cursor.execute(
+                """
+                SELECT id, session_id, user_input, extracted_params, created_at
+                FROM user_queries
+                WHERE id > %s
+                ORDER BY id ASC
+                LIMIT %s
+                """,
+                (since_id, limit),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT id, session_id, user_input, extracted_params, created_at
+                FROM user_queries
+                ORDER BY id DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+        rows = cursor.fetchall()
+        cursor.close()
+        for r in rows:
+            ep = r.get("extracted_params")
+            if isinstance(ep, str):
+                try:
+                    r["extracted_params"] = json.loads(ep)
+                except json.JSONDecodeError:
+                    r["extracted_params"] = None
+        if since_id == 0:
+            rows.reverse()
+        return rows
 
     def save_tour(self, query_id, tour_package, total_price):
         cursor = self.connection.cursor()

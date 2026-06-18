@@ -224,30 +224,6 @@ def main():
         label2="N",
     )
 
-    # Легенда
-    leg_x, leg_y = 0.45, 1.35
-    ax.text(leg_x, leg_y + 0.55, "Условные обозначения:", fontsize=8.5, fontweight="bold", color="#0f172a")
-    legend = [
-        "| — один (1)",
-        "< — много (N)",
-        "пунктирная линия — логическая связь",
-        "сплошная линия — физическая связь (FK)",
-    ]
-    for i, line in enumerate(legend):
-        ax.text(leg_x, leg_y + 0.2 - i * 0.28, line, fontsize=7.5, color="#334155")
-
-    # Примечания
-    note_x = 10.2
-    ax.text(note_x, leg_y + 0.55, "Примечания:", fontsize=8.5, fontweight="bold", color="#0f172a")
-    notes = [
-        "Таблицы hotels, flights, daily_stats — независимые, без связей.",
-        "Таблицы hotels и flights заполняются парсером и API.",
-        "Связи user_sessions ↔ user_queries, agency_leads — логические.",
-        "Связь user_queries → generated_tours — физическая (FK ON DELETE CASCADE).",
-    ]
-    for i, line in enumerate(notes):
-        ax.text(note_x, leg_y + 0.2 - i * 0.28, line, fontsize=7.5, color="#334155")
-
     plt.savefig(OUT, dpi=220, bbox_inches="tight", facecolor="white", pad_inches=0.25)
     print(f"Saved: {OUT}")
 
