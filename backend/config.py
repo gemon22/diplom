@@ -41,6 +41,15 @@ class Config:
     LLM_PRIMARY = os.getenv("LLM_PRIMARY", "gigachat").strip().lower()
     LLM_FALLBACK = os.getenv("LLM_FALLBACK", "true").lower() in ("1", "true", "yes")
 
+    # Поиск в интернете (DuckDuckGo, без API-ключа)
+    WEB_SEARCH_ENABLED = os.getenv("WEB_SEARCH_ENABLED", "true").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    WEB_SEARCH_MAX_RESULTS = int(os.getenv("WEB_SEARCH_MAX_RESULTS", "4"))
+    WEB_SEARCH_REGION = os.getenv("WEB_SEARCH_REGION", "ru-ru").strip()
+
     # HTTP (Timeweb App Platform / Docker)
     PORT = int(os.getenv("PORT", "8000"))
 

@@ -6,6 +6,7 @@ from deepseek_client import deepseek
 from gigachat_client import gigachat
 from database import get_db
 from dialog_hints import apply_message_hints
+from web_search_service import fetch_web_context
 from llm_common import (
     build_dialog_messages,
     build_tour_prompt,
@@ -63,7 +64,12 @@ class AIService:
         dialog_state["collected"] = collected
         source = "demo" if dialog_state.get("demo_mode") else None
         catalog_rows = get_db().get_all_hotels_sample(limit=50, source_site=source)
-        messages = build_dialog_messages(user_message, collected, catalog_rows)
+        web_context, web_query = await fetch_web_context(user_message, collected)
+        if web_query:
+            logger.info("Web search: %s", web_query)
+        messages = build_dialog_messages(
+            user_message, collected, catalog_rows, web_context=web_context
+        )
         resolved = self._resolve_provider(provider)
         errors = []
         clients = self._client_order(resolved)
@@ -121,6 +127,8 @@ class AIService:
                         ),
                         "llm_fallback": idx > 0,
                         "llm_tried": list(tried),
+                        "web_search_used": bool(web_context),
+                        "web_search_query": web_query,
                     }
                     return text, state, ready, meta
                 except (json.JSONDecodeError, TypeError) as e:

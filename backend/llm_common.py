@@ -24,9 +24,17 @@ def extract_json(text: str) -> dict:
     return json.loads(text)
 
 
-def build_dialog_system_prompt(catalog_snippet: str = "") -> str:
+def build_dialog_system_prompt(
+    catalog_snippet: str = "", web_context: str = ""
+) -> str:
     today = today_iso()
     catalog_block = catalog_snippet or "КАТАЛОГ: не загружен."
+    web_block = ""
+    if web_context:
+        web_block = f"""
+СПРАВКА ИЗ ИНТЕРНЕТА (используй для ответа на вопрос пользователя):
+{web_context}
+"""
     examples = few_shot_examples()
     return f"""
 Ты — AI-ассистент туристической фирмы «Бон Вояж» / «Планета 360». Помогаешь подобрать тур из РЕАЛЬНОГО каталога.
@@ -34,7 +42,7 @@ def build_dialog_system_prompt(catalog_snippet: str = "") -> str:
 СЕГОДНЯ: {today} (используй для проверки дат).
 
 {catalog_block}
-
+{web_block}
 {examples}
 
 ПРАВИЛА:
@@ -51,6 +59,8 @@ def build_dialog_system_prompt(catalog_snippet: str = "") -> str:
 11. Обязательно понимай русский формат дат: "10 июня", "15 июня 26", "с 10 июня по 15", "7 дней".
 12. Хэйхэ, Шанхай, Бэйдайхэ — это направление «Китай». Благовещенск — вылет в Китай.
 13. После ready система соберёт перелёт и проживание отдельно и покажет готовые туры из каталога.
+14. Если есть блок «СПРАВКА ИЗ ИНТЕРНЕТА» — используй его для визы, погоды, документов, достопримечательностей; цены туров всё равно только из каталога.
+15. Если справки из интернета нет — не выдумывай факты, предложи уточнить у менеджера +7(4162) 317-771.
 
 Ответ — ТОЛЬКО JSON:
 {{
@@ -74,7 +84,10 @@ def default_collected() -> dict[str, Any]:
 
 
 def build_dialog_messages(
-    user_message: str, collected: dict, catalog_rows: list | None = None
+    user_message: str,
+    collected: dict,
+    catalog_rows: list | None = None,
+    web_context: str = "",
 ) -> list[dict]:
     snippet = build_catalog_snippet(catalog_rows or [])
     user_prompt = f"""
@@ -83,7 +96,7 @@ def build_dialog_messages(
 Обнови collected и ответь.
 """
     return [
-        {"role": "system", "content": build_dialog_system_prompt(snippet)},
+        {"role": "system", "content": build_dialog_system_prompt(snippet, web_context)},
         {"role": "user", "content": user_prompt},
     ]
 
